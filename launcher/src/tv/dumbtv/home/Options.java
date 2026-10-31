@@ -37,14 +37,14 @@ public final class Options extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setFocusable(false);
         scroll.setVerticalScrollBarEnabled(false);
-        scroll.setBackgroundColor(0xFF0C0C0E);
+        scroll.setBackground(Ui.page(this));
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(56), dp(40), dp(56), dp(40));
         scroll.addView(list);
 
-        TextView title = Ui.text(this, 30, Ui.TEXT, Ui.LIGHT);
-        title.setText("Options");
+        TextView title = Ui.text(this, 30, Ui.TEXT, "shelf".equals(cfg.get(Config.LAYOUT)) ? Ui.serif(this) : Ui.LIGHT);
+        title.setText(Ui.t(this, "Options", "Optionen"));
         title.setPadding(dp(16), 0, 0, dp(20));
         list.addView(title);
 

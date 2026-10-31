@@ -2,6 +2,7 @@ package tv.dumbtv.home;
 
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 
 /** One tile: an installed app (id = package name) or a TV input (id = input id). */
@@ -20,6 +21,8 @@ final class Item {
     boolean own;
     /** For the launcher's own tiles: the card's colors, top to bottom. Zero: an ordinary card. */
     int tintTop, tintBottom;
+    /** Glass style: the banner's logo with its background cut away. */
+    volatile Bitmap logo;
 
     Item(String id, CharSequence label, Intent intent) {
         this.id = id;

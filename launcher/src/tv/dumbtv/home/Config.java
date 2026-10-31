@@ -104,8 +104,15 @@ final class Config {
             new String[] {"Off", "On"});
 
     static final Choice TILE_STYLE = new Choice("tile_style", "App tile style", "original",
-            new String[] {"original", "afterglow"}, new String[] {"Original", "Afterglow"});
-    static final Choice[] CHOICES = {ACCENT, TILES, LAYOUT, ORDER, LABELS, CLOCK, MEMORY, INPUTS, SWITCH, BACKGROUND, DIM, ROTATE, LOCK, TILE_STYLE};
+            new String[] {"original", "afterglow", "glass"}, new String[] {"Original", "Afterglow", "Glass"});
+    /** Glass style: logos in their own colors, or all white like iOS's clear icons. */
+    static final Choice LOGOS = new Choice("logos", "Glass logos", "color",
+            new String[] {"color", "white"}, new String[] {"Their own colors", "White"});
+    /** Glass style: clear glass needs a dark wallpaper to show light logos on, smoked a light one. */
+    static final Choice GLASS_TONE = new Choice("glass_tone", "Glass tone", "clear",
+            new String[] {"clear", "smoked"},
+            new String[] {"Clear, for dark wallpapers", "Smoked, for light wallpapers"});
+    static final Choice[] CHOICES = {ACCENT, TILES, LAYOUT, ORDER, LABELS, CLOCK, MEMORY, INPUTS, SWITCH, BACKGROUND, DIM, ROTATE, LOCK, TILE_STYLE, LOGOS, GLASS_TONE};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";
@@ -350,6 +357,33 @@ final class Config {
             }
         }
         return tagged ? fit : null;
+    }
+
+    /**
+     * A picture to use for {@code id}'s logo in the glass style, from an {@code icons} folder next
+     * to home.conf, or null. Lets an owner give a tile any look without touching the launcher.
+     */
+    File icon(String id) {
+        File own = new File(new File(dir, "icons"), id + ".png");
+        if (own.isFile()) return own;
+        if (shared != null) {
+            File pushed = new File(new File(shared, "icons"), id + ".png");
+            if (pushed.isFile()) return pushed;
+        }
+        return null;
+    }
+
+    /** The picture the screensaver shows: its own file next to home.conf, or the wallpaper. */
+    File screensaver() {
+        for (String name : new String[] {"screensaver.jpg", "screensaver.jpeg", "screensaver.png", "screensaver.webp"}) {
+            File f = new File(dir, name);
+            if (f.isFile()) return f;
+            if (shared != null) {
+                File s = new File(shared, name);
+                if (s.isFile()) return s;
+            }
+        }
+        return wallpaper();
     }
 
     List<File> wallpapers() {

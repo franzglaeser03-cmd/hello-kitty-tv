@@ -13,8 +13,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 SETTLE_SECONDS=${SETTLE_SECONDS:-180}
 RUNS=${RUNS:-2}
 APPS="com.amazon.firebat org.smarttube.stable com.amazon.firetv.youtube com.netflix.ninja
-com.disney.disneyplus com.hbo.hbonow com.apple.atve.amazon.appletv com.zdf.android.mediathek
-de.swr.ard.avp.mobile.android.amazon tv.arte.plus7"
+com.disney.disneyplus com.hbo.hbonow com.apple.atve.amazon.appletv com.spotify.tv.android
+com.zdf.android.mediathek de.swr.ard.avp.mobile.android.amazon tv.arte.plus7"
 
 compare() {
   local a=$REPORT/benchmark-$1.txt b=$REPORT/benchmark-$2.txt

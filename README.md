@@ -1,346 +1,198 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img src="docs/assets/logo-light.svg" alt="dumbtv" width="300">
-  </picture>
-</p>
+# hello-kitty-tv
 
-<p align="center"><b>Your TV should do what you paid for.</b><br>
-Ads, tracking and clutter out of your Fire TV. Your apps and HDMI inputs stay.</p>
+A second-hand Amazon Fire TV 4-Series with the ads and tracking taken out, and a new home screen
+in the style of iOS 26's clear glass, set up over ADB with no root. It is built on
+[dumbtv](https://github.com/humblemuzzu/dumbtv), with fixes and features this TV needed.
 
-<p align="center">
-  <a href="https://dumbtv.org"><b>dumbtv.org</b></a> ·
-  <a href="https://dumbtv.org/start">Get started</a> ·
-  <a href="https://dumbtv.org/blocked">What it blocks</a> ·
-  <a href="https://dumbtv.org/tv">Devices</a> ·
-  <a href="https://dumbtv.org/help">Get help</a>
-</p>
+| Before | After |
+|---|---|
+| ![Amazon's home screen, led by a full-width advert](docs/final-look/before.jpg) | ![The glass home screen](docs/final-look/home.jpg) |
 
-<p align="center">
-  <a href="https://github.com/humblemuzzu/dumbtv/stargazers"><img src="https://img.shields.io/github/stars/humblemuzzu/dumbtv?style=flat&color=4C8DFF" alt="Stars"></a>
-  <a href="https://github.com/humblemuzzu/dumbtv/releases/latest"><img src="https://img.shields.io/github/v/release/humblemuzzu/dumbtv?label=dumbtv%20home&color=4C8DFF" alt="Latest launcher release"></a>
-  <a href="https://github.com/humblemuzzu/dumbtv/actions/workflows/validate.yml"><img src="https://github.com/humblemuzzu/dumbtv/actions/workflows/validate.yml/badge.svg" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4C8DFF" alt="MIT licence"></a>
-  <a href="#thanks"><img src="https://img.shields.io/github/contributors/humblemuzzu/dumbtv?color=4C8DFF" alt="Contributors"></a>
-</p>
+| Every tile | Casting from a phone |
+|---|---|
+| ![Glass tiles for apps, cable TV, casting and Wi-Fi, with HDMI inputs below](docs/final-look/all-tiles.jpg) | ![A screen listing the ways to cast from a phone](docs/final-look/cast.jpg) |
 
-<p align="center">
-  <img src="docs/assets/hero.png" alt="dumbtv home on a television: a clock, an Apps row and an Inputs row" width="880">
-</p>
+## The TV
 
-<p align="center"><sub>As seen in
-<a href="https://techcrunch.com/2026/10/19/people-are-using-ai-to-make-their-smart-tvs-dumb-again/">TechCrunch</a> ·
-<a href="https://www.techradar.com/entertainment/streaming/your-tv-should-do-what-you-paid-for-people-are-vibe-coding-apps-to-banish-ads-from-their-smart-tvs-and-android-tv-and-its-catching-on">TechRadar</a> ·
-<a href="https://www.tomsguide.com/ai/people-are-using-ai-to-turn-their-smart-tvs-into-dumb-tvs-and-you-might-want-to-do-the-same">Tom's Guide</a> ·
-<a href="https://gizmodo.com/people-using-ai-to-make-smart-tvs-dumb-again-is-the-most-2026-thing-ever-2000828213">Gizmodo</a> ·
-<a href="https://www.xda-developers.com/people-are-now-vibe-coding-their-smart-tvs-to-strip-them-of-ads-and-unwanted-features/">XDA</a> ·
-<a href="https://itsfoss.com/news/debloat-smart-tv/">It's FOSS</a> ·
-<a href="docs/PRESS.md">and more than 100 others</a></sub></p>
+| | |
+|---|---|
+| Model | Amazon Fire TV 4-Series, 55 inch, 4K |
+| Retail model | 4K55N400D (`AMZ_4K55N400D` on the About screen) |
+| ADB model | `AFTKAUK001`, codename `anna` |
+| Chip | MediaTek `m7632`: four Cortex-A55 cores at 1.5 GHz, 32-bit apps |
+| Memory | 1.7 GB RAM visible to Android, 11 GB of storage |
+| Software | Fire OS 7.7.1.7, build PS7717.5741N, Android 9 (SDK 28), March 2026 patch level |
+| Picture | 4K panel, with the interface drawn at 1080p |
 
----
-
-## The story
-
-I had a Fire TV Edition television that had become painful to use. Menus lagged,
-apps took ages to open, and the home screen was mostly ads. When I looked, it had
-129 MB of free memory, and much of the rest went to apps that started on their own
-and to Amazon services that report what you watch.
-
-So I asked a coding agent to clean it up over ADB, and
-[posted what happened](https://x.com/DevMuzzammil/status/2111595814099591535). People
-asked for the scripts, so I put them here and
-[shared them](https://x.com/DevMuzzammil/status/2111912547318395338). Since then,
-owners of about twenty other TVs and sticks have run it and sent back what they
-found.
-
-dumbtv is that cleanup, made safe to run on someone else's TV.
+The notes for dumbtv's catalog are in
+[`catalog/devices/fireos-amazon-aftkauk001.yaml`](catalog/devices/fireos-amazon-aftkauk001.yaml).
 
 ## What it does
 
-On a Fire TV stick, Cube or Fire TV Edition television, from your computer, with
-no root:
+**Home screen**
+- A top shelf modelled on the Apple TV: the focused app large, over a wallpaper you can see through
+  the tiles.
+- Glass tiles with a shadow, inner light, a bright rim and a sheen. They are drawn once into bitmaps,
+  so they stay smooth on this slow chip.
+- Every logo cut out of its background and given the pearly look of the Apple TV logo.
+- A serif clock, Options and Settings, in [Tinos](https://github.com/googlefonts/tinos), which is
+  drawn to Times New Roman's measures.
+- Tiles Fire OS does not offer: **cable TV**, **casting**, and **Wi-Fi settings** in one press.
+- A screensaver that shows one picture of your choice and nothing else.
 
-- **Removes the ads and tracking.** Disables Amazon's sponsored rows, ad
-  services, screen fingerprinting (ACR), telemetry and experiments, and turns off
-  ad tracking and usage reporting.
-- **Blocks what cannot be disabled.** A small open-source DNS filter on the TV
-  stops Amazon's telemetry and automatic updates from reaching their servers.
-  Everything else, including your streaming apps, works as before.
-- **Replaces the home screen** with [dumbtv home](launcher/README.md): your apps,
-  your inputs and a clock. 54 KB, open source, no internet access, no permissions.
-- **Leaves your apps alone.** Nothing you watch is removed unless you name it.
-- **Can all be undone** with one command.
+**Privacy and ads**
+- 44 packages off, including those that hold screen-capture permissions (`hedwig`, `logan`,
+  `ods.kindleconnect`) and the viewing recognition service (`tv.acr`).
+- A DNS filter on the TV with about 78,000 blocked names: Amazon's trackers and update servers,
+  general ad and tracker lists, and telemetry read off this TV's own DNS log. An allow list keeps the
+  streaming apps and Alexa's voice servers reachable.
+- Ad tracking and usage reporting switched off.
+- YouTube through [SmartTube](https://github.com/yuliskov/SmartTube), which has no ad code, with
+  Shorts hidden and sponsored segments skipped. Its tile uses the usual YouTube logo.
 
-## Quick start
+**Security**
+- ADB debugging is off when the work is done, so port 5555 is closed.
+- Installing from unknown sources is off, and SmartTube cannot install its own updates.
+- AirPlay asks new devices for a code. Alexa and casting keep their ports open, because they are in use.
 
-You need a computer with [`adb`](https://developer.android.com/tools/releases/platform-tools)
-and about ten minutes. On the TV, turn on ADB: **Settings → My Fire TV → About**,
-press OK on the device name 7 times, then **Developer Options → ADB debugging**.
-The TV's IP address is under **Settings → My Fire TV → About → Network** (on a
-Fire TV Edition television: **Settings → Network**, then the connected network).
+## Results
 
-**With a coding agent** (Claude Code, Codex, Cursor, Gemini and others): clone this
-repository, open the agent in it, and say:
+Measured with `scripts/benchmark.sh` on this TV, over weak Wi-Fi.
 
-> Clean up my Fire TV. Its IP address is _(the address from the Network screen)_.
-
-It reads [AGENTS.md](AGENTS.md), asks you a few questions, and runs the steps
-below.
-
-**By hand:**
-
-```sh
-git clone https://github.com/humblemuzzu/dumbtv && cd dumbtv
-adb connect <tv-ip>:5555        # press Allow on the TV
-./scripts/preflight.sh          # what the TV is and what would change; changes nothing
-./scripts/configure.sh          # a few questions
-./scripts/all.sh                # asks before each step, reboots the TV twice
-./scripts/verify.sh             # checks the result
-```
-
-Works from macOS, Linux and Windows (WSL or Git Bash). The same steps, one at a
-time, are at [dumbtv.org/start](https://dumbtv.org/start).
-
-**Rather not do it yourself?** [Tell us about your TV](https://dumbtv.org/help) and
-we will help.
-
-## What you choose
-
-`configure.sh` asks, and nothing is decided for you:
-
-| Question | Default |
-|---|---|
-| Do you watch Prime Video? | yes: its servers stay reachable |
-| Keep Alexa and the voice button? | yes |
-| Replace Amazon's home screen with dumbtv home? | yes |
-| Run the DNS filter on the TV? | yes |
-| Any apps you want removed? | none |
-| Replace the YouTube app with SmartTube (no ads, no Shorts)? | no |
-
-Your answers are saved in `dumbtv.conf`; run `configure.sh` again to change them.
-
-## What changes
-
-| | |
-|---|---|
-| **Amazon packages** | About 50 disabled: ads, sponsored content, ACR, telemetry, crash and usage uploads, experiments, update nags. Disabled, never deleted. |
-| **Protected packages** | The few Amazon will not let anyone disable lose background running; the DNS filter blocks what they upload. |
-| **Settings** | Ad tracking limited, interest-based ads off, usage reporting off, home-screen autoplay off. |
-| **DNS** | [personalDNSfilter](https://github.com/IngoZenz/personaldnsfilter) runs on the TV and blocks about 400 Amazon telemetry, ad and update hosts. YouTube, the Appstore and your other apps are not blocked. |
-| **Home screen** | dumbtv home instead of Amazon's: no promo tiles, no sponsored rows. |
-| **Your apps** | Untouched. |
-
-[How it works](docs/HOW-IT-WORKS.md) explains each part and why it is needed.
-[dumbtv.org/blocked](https://dumbtv.org/blocked) lists every package, what it does
-and what you lose without it.
-
-## dumbtv home
-
-| Rows | Grid | Options |
+| | Stock | Final |
 |---|---|---|
-| ![Rows layout](docs/assets/screens/home.png) | ![Grid layout](docs/assets/screens/grid.png) | ![Options](docs/assets/screens/options.png) |
+| Home screen, janky frames | 34% | 0% in three runs, 10% in one right after a heavy app test |
+| Home screen, 90th percentile frame | 27 ms | 6 to 17 ms |
+| Home screen, 99th percentile frame | 85 ms | 12 to 25 ms |
+| Home screen app's memory | 201 MB | 104 to 131 MB |
+| Swap in use, 3 minutes after boot | 218 MB | 130 MB |
+| Packages switched off | 2 | 44 |
+| RAM available, 3 minutes after boot | 498 MB | 453 MB |
+| Boot to ready | 73 s | 95 s |
+| Opening most apps | 0.7 to 1 s | about the same |
 
-A home screen that shows your apps and your HDMI inputs, and nothing else. Accent
-colours, tile sizes, rows or a grid, wallpapers, adaptive backgrounds, renaming and
-hiding, all from the remote. HOME lands on it in a fraction of a second.
+So the home screen is far smoother and the TV leans less on swap, but free RAM and boot time did not
+improve: the filter and the richer home screen use what the cleanup freed. Apps mostly open as fast as
+before. Compiling ahead of time helped some (ZDF opened in half the time) and slowed others (Prime
+Video, Disney+ and HBO Max), so `scripts/speed.sh` only does it where it helped.
 
-It is plain Java with no libraries and no internet permission, so it cannot send
-anything anywhere. On Fire OS 7 and 8 it asks for no permissions at all. It works
-on its own, without the rest of dumbtv:
+## What it cannot do
 
-```sh
-adb connect <tv-ip>:5555
-./launcher/install.sh
-```
+- **Restyle the inside of apps.** Netflix, Prime Video and Fire OS's settings draw their own screens.
+- **Block ads inside streams.** They usually come from the same servers as the video. Prime Video
+  needs its paid ad-free add-on, and Netflix, Disney+ and HBO Max only show ads on their ad plans.
+- **Delete Amazon's software.** Without root it can only be switched off. A few packages refuse even
+  that, so they are restricted and their servers blocked. Each streaming service still knows what you
+  watch on it.
+- **Keep Fire OS updated.** The filter blocks updates, because one would switch much of this back on,
+  and that also stops security patches. See [the FAQ](docs/FAQ.md) for updating on purpose.
 
-[launcher/README.md](launcher/README.md) covers the settings, wallpapers and how
-it takes over the HOME button.
+**Not tested end to end:** the checks ran over ADB. They confirm that all apps open, the tuner starts
+and AirPlay answers on the network, but not video playback, the voice button or casting from a real
+phone. Those need a person at the TV.
 
-## Tested on
+## Doing the same
 
-Each row is a report from the person who ran it. **tested** means the whole pass ran
-and `verify.sh` passed on that device. [dumbtv.org/tv](https://dumbtv.org/tv) has
-every model with its menu paths and quirks.
-
-| Device | Fire OS | Status | Tested by |
-|---|---|---|---|
-| [Fire TV Stick 4K, 1st gen (AFTMM)](catalog/devices/fireos-amazon-aftmm.yaml) | 6.7 | tested | [@niz-coder](https://github.com/niz-coder) |
-| [Insignia Fire TV Edition (AFTEAMR311)](catalog/devices/fireos-insignia-afteamr311.yaml) | 6.7 | tested | [@gtalusan](https://github.com/gtalusan) |
-| [Toshiba 50LF621U19, 55LF711U20 Fire TV Edition (AFTKMST12)](catalog/devices/fireos-toshiba-aftkmst12.yaml) | 6.7 | tested | [@ryanlucht](https://github.com/ryanlucht), [@zekesax](https://github.com/zekesax) |
-| [Fire TV, 3rd gen (AFTN)](catalog/devices/fireos-amazon-aftn.yaml) | 6.2 | tested | [@adi-c](https://github.com/adi-c) |
-| [Fire TV Cube, 2nd gen (AFTR)](catalog/devices/fireos-amazon-aftr.yaml) | 7.7 | tested | [@podulator](https://github.com/podulator) |
-| [Fire TV Cube, 3rd gen (AFTGAZL)](catalog/devices/fireos-amazon-aftgazl.yaml) | 7.7 | tested | [@sakalliAI](https://github.com/sakalliAI) |
-| [Amazon AFTALMO](catalog/devices/fireos-amazon-aftalmo.yaml) | 7.7 | tested | [@TheiMacNoob](https://github.com/TheiMacNoob) |
-| [Xiaomi L55M7-FVEU Fire TV (AFTANNA0)](catalog/devices/fireos-xiaomi-aftanna0.yaml) | 7.7 | tested | [@jmcerrejon](https://github.com/jmcerrejon) |
-| [Fire TV Stick 4K Max, 1st gen (AFTKA)](catalog/devices/fireos-amazon-aftka-ps7713.yaml) | 7.7 | tested | [@harupong](https://github.com/harupong), [@Elv1sh](https://github.com/Elv1sh) |
-| [Insignia 50" F30 (AFTDCT31)](catalog/devices/fireos-insignia-aftdct31.yaml) | 7.7 | tested | [@timcunningham-sv](https://github.com/timcunningham-sv) |
-| [Onida 43" Fire TV Edition (AFTGRO001)](catalog/devices/fireos-onida-aftgro001.yaml) | 7.7 | tested | [@humblemuzzu](https://github.com/humblemuzzu) |
-| [Fire TV Stick HD 2024, Stick Lite 2020 (AFTSS)](catalog/devices/fireos-amazon-aftss.yaml) | 7.7 | tested | [@RabeJonas](https://github.com/RabeJonas), [@Prathamesh913](https://github.com/Prathamesh913), [@arielvieira](https://github.com/arielvieira) |
-| [Hisense 55QD65NF (AFTHA004)](catalog/devices/fireos-hisense-aftha004.yaml) | 7.7 | tested | [@stedrow](https://github.com/stedrow) |
-| [Ember 55, Fire TV Omni Mini-LED (AFTOMNA003)](catalog/devices/fireos-amazon-aftomna003.yaml) | 8.0 | tested | [@zaco-tm](https://github.com/zaco-tm) |
-| [Fire TV Stick 4K Max, 2nd gen (AFTKRT)](catalog/devices/fireos-amazon-aftkrt.yaml) | 8.1 | tested | [@gerardo-galvez-hl](https://github.com/gerardo-galvez-hl), [@derkstample](https://github.com/derkstample), [@aboubakrine](https://github.com/aboubakrine) |
-| [Fire TV Stick 4K Plus (AFTMA08C15)](catalog/devices/fireos-amazon-aftma08c15.yaml) | 8.1 | tested | [@edrmundy](https://github.com/edrmundy) |
-| [Fire TV Edition television (AFTOLCBC82)](catalog/devices/fireos-amazon-aftolcbc82.yaml) | 8.1 | tested | [@koconnorgit](https://github.com/koconnorgit), [@iotemylabs](https://github.com/iotemylabs) |
-| [Fire TV smart TV (AFTHY7ABBA)](catalog/devices/fireos-amazon-afthy7abba.yaml) | 8.1 | tested | [@bring-nirachornkul](https://github.com/bring-nirachornkul) |
-| [Fire TV Stick, 3rd gen (AFTSSS)](catalog/devices/fireos-amazon-aftsss.yaml) | 7.7 | partial | [@B3NR1S](https://github.com/B3NR1S) |
-| [Fire TV Stick 4K Max, 1st gen (AFTKA)](catalog/devices/fireos-amazon-aftka-ps7697.yaml) | 7.6 | partial | [@dchuk](https://github.com/dchuk) |
-| [Hisense 58U6HF (AFTHA001)](catalog/devices/fireos-hisense-aftha001.yaml) | 7.7 | partial | [@murilaiooo](https://github.com/murilaiooo) |
-| [Redmi Smart Fire TV 32 (AFTMV00)](catalog/devices/fireos-redmi-aftmv00.yaml) | 7.7 | partial | [@NeutronZero](https://github.com/NeutronZero) |
-| [Fire TV Stick 4K, 2nd gen (AFTKM)](catalog/devices/fireos-amazon-aftkm.yaml) | 8.1 | partial | [@gleesonb](https://github.com/gleesonb), [@humblemuzzu](https://github.com/humblemuzzu) |
-| [Insignia 50" F50 (AFTHY7ABBA)](catalog/devices/fireos-insignia-afthy7abba.yaml) | 8.1 | partial | [@dave137-beep](https://github.com/dave137-beep) |
-
-Android TV and Google TV reports, run by hand from the lists in
-`data/androidtv/`:
-
-| Device | Android | Tested by |
-|---|---|---|
-| [BenQ GP520 projector](catalog/devices/androidtv-benq-gp01.yaml) | 11 | [@KasperHonore](https://github.com/KasperHonore) |
-| [Changhong AI PONT](catalog/devices/androidtv-changhong-ai-pont.yaml) | 14 | [@frogu](https://github.com/frogu) |
-| [Hisense SmartTV 4K FFM](catalog/devices/androidtv-hisense-smarttv-4k-ffm.yaml) | 11 | [@aswinaasokan18-spec](https://github.com/aswinaasokan18-spec) |
-| [onn. Streaming Device 4K Pro](catalog/devices/androidtv-onn-streaming-device-4k-pro.yaml) | 14 | [@OSikorsky](https://github.com/OSikorsky) |
-| [Philips 24NA 4K](catalog/devices/androidtv-philips-24na-4k.yaml) | 14 | [@lsukev](https://github.com/lsukev) |
-| [Philips TA6 LT](catalog/devices/androidtv-philips-ta6-lt.yaml) | 14 | [@fabricio00101](https://github.com/fabricio00101) |
-| [OnePlus TV Y Series](catalog/devices/androidtv-oneplus-y-series.yaml) | 11 | [@priyank-saarthios-ai](https://github.com/priyank-saarthios-ai) |
-| [Philips OLED705, PUS7304, PUS7334 (TPM191E)](catalog/devices/androidtv-philips-tpm191e.yaml) | 12 | [@tkightly](https://github.com/tkightly), [@damsma](https://github.com/damsma), [@PazkaL](https://github.com/PazkaL) |
-| [TCL Smart TV Pro G08](catalog/devices/androidtv-tcl-g08.yaml) | 14 | [@maam00](https://github.com/maam00) |
-| [Xiaomi Mi TV Stick](catalog/devices/androidtv-xiaomi-mi-tv-stick.yaml) | 9 | [@pfTheTrial](https://github.com/pfTheTrial) |
-| [Xiaomi Mi TV (MSSP3)](catalog/devices/androidtv-xiaomi-mitv-mssp3.yaml) | 9 | [@frogu](https://github.com/frogu) |
-
-For a full Android TV and Google TV tool, see
-[cleanyourtv](https://github.com/Gathin23/cleanyourtv). Samsung, LG, Roku and other
-TVs give owners no way in; [docs/OTHER-TVS.md](docs/OTHER-TVS.md) explains each
-one and what you can still do.
-
-**Your TV not here?** Run it, then `./scripts/contribute.sh`. It writes the report
-for you. [CONTRIBUTING.md](CONTRIBUTING.md) has the details.
-
-## Undo
+You need `adb`, Git Bash or a Unix shell, and a JDK 17 with the Android SDK to build the launcher
+(`platforms;android-25`, `build-tools;34.0.0`). Turn on ADB debugging on the TV first.
 
 ```sh
-./scripts/restore.sh
+git clone https://github.com/franzglaeser03-cmd/hello-kitty-tv && cd hello-kitty-tv
+adb connect <tv-ip>:5555        # press Allow on the TV and tick Always allow
+./scripts/preflight.sh          # read-only: check the router it prints is really yours
+
+./scripts/configure.sh -y --prime 1 --alexa 1 --launcher 1 --dnsfilter 1 --youtube 1 --adblock light
+printf 'FILTER_AUTOSTART=0\nLAUNCHER_BUILD=1\n' >> dumbtv.conf
+
+./scripts/debloat.sh -y
+./scripts/lockdown.sh -y
+./scripts/dnsfilter.sh -y
+./scripts/launcher.sh -y        # builds the launcher from this checkout
+./scripts/youtube.sh -y
+./scripts/verify.sh             # must end with: all checks passed
 ```
 
-It re-enables every package, clears the app and network rules, puts back the
-settings the TV had before (from the snapshot `preflight.sh` takes), removes the
-filter and gives HOME back to Amazon. An app you asked to have uninstalled comes
-back from the Appstore.
+Then, on a TV you can reach by hand:
 
-## Good to know
+```sh
+# Packages this TV could do without, with automatic rollback if a check fails.
+# Leave out anything you use.
+./scripts/trial.sh com.amazon.tahoe com.amazon.bueller.photos com.amazon.ods.kindleconnect \
+  com.amazon.kso.blackbird com.amazon.audiolatencymeasurer
+./scripts/speed.sh --compile
 
-- **Nothing is written to `/system`**, the part of the TV whose modification
-  bricks it. A factory reset removes everything dumbtv did.
-- **Fire OS updates are blocked** while the DNS filter runs, since an update would
-  switch a lot of this back on. [The FAQ](docs/FAQ.md) explains how to update
-  anyway.
-- **It cannot replace Fire OS.** The boot chain is locked by Amazon.
-  [Here is why](docs/WHY-NOT-REPLACE-OS.md).
-- **YouTube ads can't be blocked by DNS.** They come from the same servers as the
-  videos. [docs/YOUTUBE.md](docs/YOUTUBE.md) explains, and what to use instead.
+# The look. Wallpapers come from launcher/wallpapers.py or your own picture.
+FILES=/sdcard/Android/data/tv.dumbtv.home/files
+python3 launcher/wallpapers.py wallpapers
+adb shell mkdir -p $FILES/wallpapers $FILES/icons
+adb push wallpapers/. $FILES/wallpapers/
+python3 tools/fetch-icons.py icons-src      # needs Pillow and numpy for the next line
+python3 tools/glass-icons.py icons-src icons
+adb push icons/. $FILES/icons/
+adb push examples/home.conf $FILES/home.conf
 
-## Documentation
+# One picture as the screensaver.
+adb push my-picture.jpg $FILES/screensaver.jpg
+adb shell settings put secure screensaver_components tv.dumbtv.home/.Dream
+adb shell settings put secure screensaver_default_component tv.dumbtv.home/.Dream
+adb shell settings put secure contextual_screen_off_timeout 300000
 
-| | |
-|---|---|
-| [dumbtv.org](https://dumbtv.org) | the website: guides, every package, every device |
-| [How it works](docs/HOW-IT-WORKS.md) | each part and why it is needed |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | symptoms and fixes |
-| [FAQ](docs/FAQ.md) | updates, Prime Video, factory reset, is this legal |
-| [Other TVs](docs/OTHER-TVS.md) | Android TV, Samsung, LG, Roku and the rest |
-| [YouTube](docs/YOUTUBE.md) | why its ads cannot be blocked, and SmartTube |
-| [Why not replace the OS](docs/WHY-NOT-REPLACE-OS.md) | the locked boot chain |
-| [dumbtv home](launcher/README.md) | the launcher |
-| [Device catalog](catalog/README.md) | per-model notes |
-| [AGENTS.md](AGENTS.md) | instructions for coding agents |
-| [Press](docs/PRESS.md) | coverage |
+# Lock it down, last of all: this ends your adb session.
+adb shell settings put secure install_non_market_apps 0
+adb shell appops set org.smarttube.stable REQUEST_INSTALL_PACKAGES deny
+adb shell settings put global adb_enabled 0
+```
 
-## Thanks
+`examples/home.conf` uses `glass_tone=smoked`, which suits a light picture. Use `clear` with the dark
+wallpapers from `launcher/wallpapers.py`. More in [the launcher's README](launcher/README.md).
 
-To everyone who tested a TV, wrote code, or reported a problem. dumbtv works on all
-the devices above because of you.
+**Undo:** turn ADB back on, then run `./scripts/restore.sh`. A factory reset also removes everything,
+because nothing here touches `/system`.
 
-<a href="https://github.com/humblemuzzu/dumbtv/graphs/contributors"><img src="https://contrib.rocks/image?repo=humblemuzzu/dumbtv" alt="Contributors"></a>
+## What this TV taught us
 
-**Code, fixes and device reports:**
-[@fabricio00101](https://github.com/fabricio00101),
-[@MrVoicer](https://github.com/MrVoicer),
-[@Jovci](https://github.com/Jovci),
-[@niz-coder](https://github.com/niz-coder),
-[@centsandcode](https://github.com/centsandcode),
-[@maam00](https://github.com/maam00),
-[@alfibi](https://github.com/alfibi),
-[@theChef613](https://github.com/theChef613),
-[@rachit-jain](https://github.com/rachit-jain),
-[@daviavmello](https://github.com/daviavmello),
-[@yuriwc](https://github.com/yuriwc),
-[@lsukev](https://github.com/lsukev),
-[@dchuk](https://github.com/dchuk),
-[@gerardo-galvez-hl](https://github.com/gerardo-galvez-hl),
-[@koconnorgit](https://github.com/koconnorgit),
-[@pfTheTrial](https://github.com/pfTheTrial),
-[@frogu](https://github.com/frogu),
-[@podulator](https://github.com/podulator),
-[@tkightly](https://github.com/tkightly),
-[@OSikorsky](https://github.com/OSikorsky),
-[@nolanvargas](https://github.com/nolanvargas),
-[@harupong](https://github.com/harupong),
-[@gtalusan](https://github.com/gtalusan),
-[@B3NR1S](https://github.com/B3NR1S),
-[@bglaszcz](https://github.com/bglaszcz),
-[@murilaiooo](https://github.com/murilaiooo),
-[@dnpkuk](https://github.com/dnpkuk),
-[@timcunningham-sv](https://github.com/timcunningham-sv),
-[@iotemylabs](https://github.com/iotemylabs),
-[@aswinaasokan18-spec](https://github.com/aswinaasokan18-spec),
-[@edrmundy](https://github.com/edrmundy),
-[@MarioMartReq](https://github.com/MarioMartReq),
-[@ravishan16](https://github.com/ravishan16),
-[@jonathanrzarzuela-cloud](https://github.com/jonathanrzarzuela-cloud),
-[@Loadedrakeman](https://github.com/Loadedrakeman),
-[@ryanlucht](https://github.com/ryanlucht),
-[@tharun634](https://github.com/tharun634),
-[@NimorM](https://github.com/NimorM),
-[@RabeJonas](https://github.com/RabeJonas),
-[@Prathamesh913](https://github.com/Prathamesh913),
-[@zaco-tm](https://github.com/zaco-tm),
-[@NeutronZero](https://github.com/NeutronZero),
-[@adi-c](https://github.com/adi-c),
-[@derkstample](https://github.com/derkstample),
-[@KasperHonore](https://github.com/KasperHonore),
-[@damsma](https://github.com/damsma),
-[@arielvieira](https://github.com/arielvieira),
-[@stedrow](https://github.com/stedrow),
-[@zekesax](https://github.com/zekesax)
+- **A wired port can hide the real router.** This TV's cable went to a range extender that had not
+  joined the Wi-Fi. Android keeps a default route for that dead network too, and dumbtv took it for the
+  router, which would have cut the internet for every app. `gateway()` now asks which route the
+  internet really takes.
+- **A static IP will not fix that cable.** Nothing behind the extender reaches the router until it is
+  paired. Until then, unplug the cable: an unpaired extender tends to offer an open Wi-Fi network, and
+  anyone who joins it can reach the TV's open ports.
+- **The DNS filter can lose a race at boot.** On some boots its tunnel came up with DNS going around
+  it, so nothing was blocked. `FILTER_AUTOSTART=0` held across every reboot tested. Run `verify.sh`
+  after a reboot, not just after the install.
+- **Screen mirroring takes the Wi-Fi radio.** Opening Fire OS's receiver drops the TV off Wi-Fi until
+  that screen closes, so do not open it over ADB on a TV you cannot reach by hand.
+- **AirPlay is already there.** Apple's own AirPlay app ships on this TV and answers on the network,
+  with no third-party receiver needed.
+- **App Store icons can already be iOS 26 renders.** Several come with the glass rim built in.
 
-**Bug reports:**
-[@gleesonb](https://github.com/gleesonb),
-[@dennus280-ship-it](https://github.com/dennus280-ship-it),
-[@FyllyMan](https://github.com/FyllyMan),
-[@nairyash](https://github.com/nairyash),
-[@PWannop](https://github.com/PWannop),
-[@jt-at-home](https://github.com/jt-at-home),
-[@thearchivist9778-ai](https://github.com/thearchivist9778-ai),
-[@GrackleCrow](https://github.com/GrackleCrow),
-[@MisterKOak](https://github.com/MisterKOak)
+## What is different from dumbtv
 
-And to the projects dumbtv stands on:
-[personalDNSfilter](https://github.com/IngoZenz/personaldnsfilter) by Ingo Zenz,
-[HaGeZi's DNS blocklists](https://github.com/hagezi/dns-blocklists),
-[SmartTube](https://github.com/yuliskov/SmartTube) by Yuriy Liskov, and
-[cleanyourtv](https://github.com/Gathin23/cleanyourtv) by
-[@Gathin23](https://github.com/Gathin23) for Android TV and Google TV.
+The original README is kept as [DUMBTV-README.md](DUMBTV-README.md), and its docs and rules still apply.
+New here:
 
-## Legal
+- Launcher: `Glass.java`, `Cast.java`, `Dream.java`, the top shelf layout, the three new tiles.
+- Scripts: `benchmark.sh`, `audit.sh`, `trial.sh` and `speed.sh`; `configure.sh --adblock`; router
+  detection; transfers that survive weak Wi-Fi; a launcher build that works from Git Bash.
+- `tools/` for the icons, `launcher/wallpapers.py`, `examples/home.conf`.
 
-dumbtv changes settings on a device you own, through the developer tools the
-manufacturer ships. It does not bypass DRM, unlock anything or touch anyone's
-account. Fire TV, Fire OS, Alexa and Prime Video are trademarks of Amazon; dumbtv is
-not affiliated with or endorsed by Amazon. Use it at your own risk.
+## Credits and licences
 
-## Licence
+- [dumbtv](https://github.com/humblemuzzu/dumbtv) by Muzzammil and its contributors: this project is
+  their work with additions. MIT for scripts, docs and the launcher, CC BY-SA 4.0 for the device
+  catalog, as in [LICENSE](LICENSE) and [catalog/LICENSE](catalog/LICENSE).
+- The top shelf follows the idea in [dumbtv PR #21](https://github.com/humblemuzzu/dumbtv/pull/21) by
+  jonathanrzarzuela-cloud.
+- [personalDNSfilter](https://github.com/IngoZenz/personaldnsfilter),
+  [HaGeZi's DNS blocklists](https://github.com/hagezi/dns-blocklists) and
+  [SmartTube](https://github.com/yuliskov/SmartTube) are downloaded when you ask for them.
+- [Tinos](https://github.com/googlefonts/tinos), SIL Open Font License, in `launcher/assets/fonts/`.
+- Built with [Claude Code](https://claude.com/claude-code).
 
-Scripts, docs and the launcher are [MIT](LICENSE). The device catalog is
-[CC BY-SA 4.0](catalog/LICENSE).
+Not affiliated with or endorsed by Amazon, Apple, Sanrio or any streaming service. Hello Kitty and My
+Melody are trademarks of Sanrio, and the art in the screenshots is © Sanrio. App logos belong to their
+owners. None of those pictures are in this repository as files, only as they appear in the screenshots:
+bring your own picture, and fetch icons for your own TV.
 
-dumbtv bundles none of these, but downloads them when you ask for them:
-personalDNSfilter (GPL-2.0) from F-Droid, HaGeZi's Amazon tracker list (GPL-3.0),
-and SmartTube (MIT) from its own releases.
+Use at your own risk. Changing a TV like this is your call and your responsibility.

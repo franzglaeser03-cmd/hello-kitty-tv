@@ -71,7 +71,8 @@ for p in $(list_of "$(fos never-disable.txt)" | awk '{print $1}'); do
 done
 
 step "screensaver"
-if [[ $(dev1 settings get secure screensaver_components) == "$AOSP_DREAM" ]]; then
+current_dream=$(dev1 settings get secure screensaver_components)
+if [[ $current_dream == "$AOSP_DREAM" || $current_dream == tv.dumbtv.home/* ]]; then
   want=$(restore_value secure screensaver_components "$(dev1 settings get secure screensaver_default_component)")
   if [[ -n $want && $want != null && $want != "$AOSP_DREAM" ]]; then
     acmd settings put secure screensaver_components "$want" >/dev/null

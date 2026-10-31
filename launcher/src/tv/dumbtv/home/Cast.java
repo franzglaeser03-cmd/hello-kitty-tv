@@ -31,7 +31,7 @@ public final class Cast extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setFocusable(false);
         scroll.setVerticalScrollBarEnabled(false);
-        scroll.setBackgroundColor(0xFF0C0C0E);
+        scroll.setBackground(Ui.page(this));
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(56), dp(36), dp(56), dp(36));
@@ -90,7 +90,7 @@ public final class Cast extends Activity {
         bg.addState(new int[] {android.R.attr.state_focused},
                 Ui.round((accent & 0x00FFFFFF) | 0x33000000, dp(12)));
         bg.addState(new int[0], Ui.round(0x0FFFFFFF, dp(12)));
-        row.setBackground(bg);
+        row.setBackground(Ui.glass(this) ? Glass.focusable(dp(14), dp(1.2f), Ui.glassTint(this), 0) : bg);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, WRAP);
         lp.bottomMargin = dp(10);
         row.setLayoutParams(lp);

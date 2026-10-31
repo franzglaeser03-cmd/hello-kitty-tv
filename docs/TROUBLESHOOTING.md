@@ -192,6 +192,20 @@ The app rebuilds its index only at boot. Change `data/blocklists/extra-hosts.txt
 and run `./scripts/dnsfilter.sh`; it pushes the list, marks the index outdated and
 reboots. The app's own `additionalHosts.txt` is ignored on Fire OS 7.
 
+### Every app lost the internet after `dnsfilter.sh`
+
+The filter asks the router the script found. A TV whose wired port sits behind a box with no
+internet (an unpaired range extender, say) keeps a default route for that port too, and older
+versions of the script took its dead gateway for the router. `preflight.sh` prints the gateway it
+found: it should be your router. Current versions ask which route the internet really takes.
+
+### The wired port has an address, but nothing works over it
+
+Check where the address came from: `adb shell dumpsys ethernet | grep onNewDhcpResults`. A DHCP
+server that is not your router, with a very short lease, is usually a range extender that has not
+joined your Wi-Fi. A static address on the TV does not help, because there is no path to the router
+behind it. Pair the extender (its WPS button, then the router's), or run the cable to the router.
+
 ### A streaming app stopped working
 
 A host it needs is blocked. Remove that exact host from
@@ -223,6 +237,12 @@ window while disabled, and taps cannot dismiss it. It is on `never-disable.txt`.
 adb shell pm enable --user 0 com.amazon.vizzini
 adb reboot
 ```
+
+### adb drops when the TV's screen mirroring opens
+
+Fire OS's Miracast receiver takes the Wi-Fi radio for Wi-Fi Direct, so a TV on Wi-Fi leaves the
+network until that screen closes. Press Back on the remote. Do not open it over adb on a TV you
+cannot reach by hand.
 
 ### Prime Video does not open
 

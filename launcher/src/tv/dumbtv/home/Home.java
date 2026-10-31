@@ -28,6 +28,7 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.format.DateFormat;
 import android.text.style.RelativeSizeSpan;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -88,6 +89,8 @@ public final class Home extends Activity {
     private boolean tintWallpaper;
     /** Top shelf layout: the focused tile large over a blur of its art, apps in a grid below. */
     private boolean shelfMode;
+    private String look;
+    private Drawable shelfGlass;
     private View shelfBlock;
     private ImageView shelfArt;
     private TextView shelfName;
@@ -141,7 +144,8 @@ public final class Home extends Activity {
         Row(String kind, String name, LinearLayout parent) {
             this.kind = kind;
             int edge = dp(shelfMode ? SHELF_EDGE : 56), bleed = dp(14);
-            title = Ui.text(Home.this, 12, Ui.FAINT, Ui.MEDIUM);
+            title = Ui.text(Home.this, 12, Ui.glassTint(Home.this) != 0
+                    ? Ui.textOnWallpaper(Home.this) : Ui.FAINT, Ui.MEDIUM);
             title.setText(name.toUpperCase(Locale.ROOT));
             title.setLetterSpacing(0.14f);
             title.setPadding(edge, dp(20), edge, dp(2));
@@ -193,6 +197,7 @@ public final class Home extends Activity {
         Future<List<Item>> catalog = io.submit(() -> Catalog.apps(this));
         cfg = Config.get(this);
         shelfMode = "shelf".equals(cfg.get(Config.LAYOUT));
+        look = look();
         Future<Map<String, Long>> times = recentFor(Catalog.APPS) == null ? null
                 : io.submit(() -> Recent.times(this));
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
@@ -231,7 +236,7 @@ public final class Home extends Activity {
         int fit = getResources().getDisplayMetrics().widthPixels / (cardSize()[0] + dp(18)) + 1;
         for (Item it : Catalog.visible(cfg, Catalog.APPS, apps.all, recentFor(Catalog.APPS))) {
             if (fit-- <= 0) break;
-            Catalog.art(getPackageManager(), it, "afterglow".equals(cfg.get(Config.TILE_STYLE)));
+            Catalog.art(this, it, "afterglow".equals(cfg.get(Config.TILE_STYLE)));
             it.artRequested = true;
         }
     }
@@ -609,7 +614,7 @@ public final class Home extends Activity {
         head.setClipToPadding(false);
         head.setGravity(Gravity.CENTER_VERTICAL);
         head.setPadding(edge, 0, edge, 0);
-        clock = Ui.text(this, 20, Ui.TEXT, Ui.MEDIUM);
+        clock = Ui.text(this, 27, Ui.textOnWallpaper(this), Ui.serif(this));
         date = Ui.text(this, 15, Ui.MUTED, Ui.MEDIUM);
         date.setVisibility(View.GONE);
         meter = new Meter(this);
@@ -635,10 +640,11 @@ public final class Home extends Activity {
         shelfArt = new ImageView(this);
         shelfArt.setScaleType(ImageView.ScaleType.CENTER_CROP);
         shelfArt.setBackground(Ui.round(Ui.SURFACE, dp(16)));
-        shelfArt.setClipToOutline(true);
-        shelfArt.setElevation(dp(14));
+        // Glass draws its own shadow outside its edge, which a clip or an elevation would spoil.
+        shelfArt.setClipToOutline(!Ui.glass(this));
+        shelfArt.setElevation(Ui.glass(this) ? 0 : dp(14));
         shelf.addView(shelfArt, new LinearLayout.LayoutParams(artW, artW * 9 / 16));
-        shelfName = Ui.text(this, 34, Ui.TEXT, Ui.LIGHT);
+        shelfName = Ui.text(this, 34, Ui.textOnWallpaper(this), Ui.LIGHT);
         shelfName.setSingleLine();
         shelfName.setPadding(dp(28), 0, 0, dp(4));
         shelf.addView(shelfName, new LinearLayout.LayoutParams(0, WRAP, 1f));
@@ -663,15 +669,27 @@ public final class Home extends Activity {
             if (changed) backdrop(it);
             return;
         }
-        GradientDrawable card = it.tintTop == 0 ? null : new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM, new int[] {it.tintTop, it.tintBottom});
-        if (card != null) card.setCornerRadius(dp(16));
-        shelfArt.setBackground(card != null ? card : Ui.round(Ui.SURFACE, dp(16)));
-        // A copy: the tile sets bounds on its own drawable at every draw.
-        Drawable.ConstantState state = art.getConstantState();
-        shelfArt.setImageDrawable(state != null ? state.newDrawable(getResources()).mutate() : art);
-        shelfArt.setScaleType(banner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.CENTER_INSIDE);
-        int pad = banner ? 0 : dp(44);
+        int pad;
+        if (Ui.glass(this)) {
+            if (shelfGlass == null) shelfGlass = Glass.plain(dp(18), dp(1.6f), Ui.glassTint(this), dp(30));
+            shelfArt.setBackground(shelfGlass);
+        } else {
+            GradientDrawable card = it.tintTop == 0 ? null : new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM, new int[] {it.tintTop, it.tintBottom});
+            if (card != null) card.setCornerRadius(dp(16));
+            shelfArt.setBackground(card != null ? card : Ui.round(Ui.SURFACE, dp(16)));
+        }
+        if (Ui.glass(this) && it.logo != null) {
+            shelfArt.setImageBitmap(it.logo);
+            shelfArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            pad = it.logo.getWidth() <= it.logo.getHeight() * 1.1f ? dp(6) : dp(30);
+        } else {
+            // A copy: the tile sets bounds on its own drawable at every draw.
+            Drawable.ConstantState state = art.getConstantState();
+            shelfArt.setImageDrawable(state != null ? state.newDrawable(getResources()).mutate() : art);
+            shelfArt.setScaleType(banner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.CENTER_INSIDE);
+            pad = banner ? 0 : dp(44);
+        }
         shelfArt.setPadding(pad, pad, pad, pad);
         shelfArt.setVisibility(View.VISIBLE);
         if (changed) {
@@ -806,8 +824,9 @@ public final class Home extends Activity {
     }
 
     private void apply() {
-        // The shelf is built with the screen, so changing to or from it starts the screen over.
-        if (shelfMode != "shelf".equals(cfg.get(Config.LAYOUT))) {
+        // The shelf and the glass logos are built with the screen and its tiles, so changing them
+        // starts the screen over.
+        if (!look.equals(look())) {
             recreate();
             return;
         }
@@ -815,6 +834,14 @@ public final class Home extends Activity {
         int accent = cfg.accent();
         for (TextView c : chips) {
             Ui.focusStyle(c, accent, 0x14FFFFFF, dp(18));
+            if (shelfMode) {
+                c.setTypeface(Ui.serif(this));
+                c.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            }
+            if (Ui.glass(this)) {
+                c.setBackground(Glass.focusable(dp(18), dp(1.2f), Ui.glassTint(this), dp(10)));
+                c.setTextColor(Ui.TEXT);
+            }
             c.setVisibility(locked() ? View.GONE : View.VISIBLE);
         }
         meter.setVisibility("on".equals(cfg.get(Config.MEMORY)) ? View.VISIBLE : View.GONE);
@@ -837,6 +864,7 @@ public final class Home extends Activity {
                         if (old.id.equals(fresh.id) && !old.id.equals(changed) && old.artRequested) {
                             fresh.banner = old.banner;
                             fresh.icon = old.icon;
+                            fresh.logo = old.logo;
                             fresh.artRequested = true;
                             fresh.backgroundColor = old.backgroundColor;
                         }
@@ -941,7 +969,7 @@ public final class Home extends Activity {
         it.artRequested = true;
         boolean cornerIcon = "afterglow".equals(cfg.get(Config.TILE_STYLE));
         io.execute(() -> {
-            Catalog.art(getPackageManager(), it, cornerIcon);
+            Catalog.art(this, it, cornerIcon);
             ui.post(() -> {
                 ViewGroup tiles = apps.tiles();
                 for (int i = 0; i < tiles.getChildCount(); i++) tiles.getChildAt(i).invalidate();
@@ -1282,6 +1310,11 @@ public final class Home extends Activity {
 
     private boolean gridLayout() {
         return shelfMode || "grid".equals(cfg.get(Config.LAYOUT));
+    }
+
+    private String look() {
+        return cfg.get(Config.LAYOUT).equals("shelf")
+                + (Ui.glass(this) ? "/glass/" + cfg.get(Config.LOGOS) + "/" + cfg.get(Config.GLASS_TONE) : "");
     }
 
     private int dp(float v) {

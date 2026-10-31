@@ -1,0 +1,38 @@
+id: fireos-amazon-aftkauk001
+title: "Amazon Fire TV 4-Series 55\" (4K55N400D, AFTKAUK001), Fire OS 7.7.1.7"
+contributors:
+  - franzglaeser03-cmd
+platform: fireos
+status: tested
+tested_on: "PS7717.5741N"
+models:
+  - "AFTKAUK001 (codename anna)"
+  - "Amazon Fire TV 4-Series 55 inch, retail model 4K55N400D (shown as AMZ_4K55N400D on the About screen)"
+adb:
+  port: 5555
+  transport: wifi
+  first_connection_prompt: "Allow USB debugging? Tick Always allow, because the pass reboots several times"
+developer_mode: >-
+  Settings > Device and Software > About > press OK on the device name 7 times, then Developer Options > ADB debugging
+ip_location: "Settings > Network, then press Play/Pause on the remote"
+prompts:
+  - name: "Allow USB debugging?"
+    blocks_automation: true
+    fix: "press Allow on the TV and tick Always allow from this computer"
+data:
+  packages: data/fireos/packages.txt
+  protected: data/fireos/protected.txt
+  never_disable: data/fireos/never-disable.txt
+  user_apps: data/fireos/user-apps.txt
+quirks:
+  - "The wired port can hold a default route with no internet behind it, for example through a range extender that has not joined the Wi-Fi. Older versions of gateway() took that dead gateway for the router, and every app lost the internet once the filter was on. The Xiaomi entry for this same platform reports what looks like the same fault."
+  - "The DNS filter's boot start races the always-on VPN on this TV: on some boots the tunnel is up and DNS goes around it. FILTER_AUTOSTART=0 fixed it across every reboot tested."
+  - "Opening Fire OS's screen mirroring takes the Wi-Fi radio for Wi-Fi Direct, so adb over Wi-Fi drops until that screen closes. Do not open it over adb on a TV you cannot reach by hand."
+  - "com.amazon.adep, com.amazon.diode and com.amazon.ftvads.deeplinking answer Cannot disable a protected package."
+  - "Apple's AirPlay app (com.apple.airplay.amazon.airplay) ships on this TV and its receiver is always on; its screen only opens from Fire OS's own settings."
+  - "The tuner is not a passthrough input, so the inputs row does not show it. com.amazon.tv.livetv/.TvChannelsPlayerActivityAlias opens it with an ACTION_VIEW of type vnd.android.cursor.dir/channel."
+  - "dumpsys meminfo can exceed its 10 s dump timeout here, so preflight.sh may print no free RAM. /proc/meminfo answers."
+notes: "Full pass with PRIME=1 ALEXA=1 LAUNCHER=1 DNSFILTER=1 YOUTUBE=1 ADBLOCK=light FILTER_AUTOSTART=0 on dumbtv home built from source: verify.sh exits 0 after a clean reboot. Prime Video, Netflix, Disney+, HBO Max, Apple TV, Spotify, ZDF, ARD, arte and SmartTube all open, Live TV opens on the tuner, and AirPlay answers on the network. Tested over weak 2.4 GHz Wi-Fi. Playback, the voice button and casting from a phone were not tested end to end, because they need a person at the TV."
+verify:
+  blocked: data/blocklists/verify-blocked.txt
+  allowed: data/blocklists/verify-allowed.txt

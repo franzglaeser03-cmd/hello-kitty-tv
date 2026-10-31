@@ -15,7 +15,8 @@ mkdir -p "$REPORT"
 PASSED=$REPORT/trial-passed.txt
 LOG=$REPORT/trial-log.txt
 APPS="com.amazon.firebat org.smarttube.stable com.netflix.ninja com.disney.disneyplus com.hbo.hbonow
-com.apple.atve.amazon.appletv com.zdf.android.mediathek de.swr.ard.avp.mobile.android.amazon tv.arte.plus7"
+com.apple.atve.amazon.appletv com.spotify.tv.android com.zdf.android.mediathek
+de.swr.ard.avp.mobile.android.amazon tv.arte.plus7"
 BEFORE_INPUTS=""
 
 say() { printf '  %s\n' "$*" | tee -a "$LOG"; }

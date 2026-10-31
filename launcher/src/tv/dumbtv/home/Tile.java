@@ -1,6 +1,7 @@
 package tv.dumbtv.home;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
@@ -34,6 +35,10 @@ final class Tile extends View {
     private final boolean labelAlways, labelOnFocus, lift;
     private final float radius, stroke;
     private final Paint glare = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** Glass style, resting and focused; null for the other styles. */
+    private final Glass.Card glassRest, glassLit;
+    private final Paint logoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final RectF logoBox = new RectF();
     private final RectF card = new RectF();
     private final Path clip = new Path();
     private final Path arrow = new Path();
@@ -62,6 +67,11 @@ final class Tile extends View {
         labelOnFocus = "focus".equals(labels);
         radius = Ui.dp(c, lift ? 12 : 10);
         stroke = Ui.dp(c, afterglow == null ? 2.5f : 1f);
+        boolean glass = lift && afterglow == null && Ui.glass(c);
+        int tint = Ui.glassTint(c);
+        int shadow = Ui.dp(c, 22);
+        glassRest = glass ? new Glass.Card(radius, Ui.dp(c, 1.3f), false, tint, shadow) : null;
+        glassLit = glass ? new Glass.Card(radius, Ui.dp(c, 1.7f), true, tint, shadow) : null;
         if (lift) {
             // The shadow follows the card only, not the label below it.
             setOutlineProvider(new ViewOutlineProvider() {
@@ -75,7 +85,7 @@ final class Tile extends View {
         }
 
         fill.setColor(app ? Ui.SURFACE : 0xFF17181B);
-        if (item.tintTop != 0) {
+        if (item.tintTop != 0 && glassRest == null) {
             fill.setShader(new LinearGradient(0, 0, 0, cardH, item.tintTop, item.tintBottom,
                     Shader.TileMode.CLAMP));
         }
@@ -87,7 +97,7 @@ final class Tile extends View {
         inner.setTypeface(Ui.MEDIUM);
         inner.setTextAlign(Paint.Align.CENTER);
         inner.setTextSize(Ui.dp(c, app ? 14 : 17));
-        under.setColor(Ui.TEXT);
+        under.setColor(glass ? Ui.textOnWallpaper(c) : Ui.TEXT);
         under.setTypeface(Ui.MEDIUM);
         under.setTextAlign(Paint.Align.CENTER);
         under.setTextSize(Ui.dp(c, 13));
@@ -114,6 +124,10 @@ final class Tile extends View {
         clip.reset();
         clip.addRoundRect(card, radius, radius, Path.Direction.CW);
         if (afterglow != null) afterglow.resize(cardW, cardH);
+        if (glassRest != null) {
+            glassRest.size(cardW, cardH);
+            glassLit.size(cardW, cardH);
+        }
         setPivotX(cardW / 2f);
         setPivotY(cardH / 2f);
     }
@@ -124,7 +138,8 @@ final class Tile extends View {
         animate().cancel();
         if (lift) {
             float s = focused ? LIFT_SCALE : 1f;
-            float z = focused ? Ui.dp(getContext(), 16) : 0;
+            // No shadow under glass: it would show through the card as a dark box.
+            float z = focused && glassRest == null ? Ui.dp(getContext(), 16) : 0;
             animate().scaleX(s).scaleY(s).translationZ(z).setDuration(focused ? 170 : 130)
                     .setInterpolator(SETTLE).start();
         } else if (focused) {
@@ -139,15 +154,21 @@ final class Tile extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         Drawable banner = item.banner, icon = item.icon;
+        Bitmap logo = item.logo;
+        // Before the clip: the card's shadow lies outside its edge.
+        if (glassRest != null) (isFocused() ? glassLit : glassRest).draw(canvas);
         canvas.save();
         canvas.clipPath(clip);
-        canvas.drawRect(card, fill);
-        if (afterglow != null) {
+        if (glassRest == null) canvas.drawRect(card, fill);
+        if (glassRest != null && logo != null) {
+            fitLogo(logo);
+            canvas.drawBitmap(logo, null, logoBox, logoPaint);
+        } else if (afterglow != null) {
             afterglow.draw(canvas, icon, cardW, cardH);
-        } else if (banner != null) {
+        } else if (banner != null && glassRest == null) {
             banner.setBounds(0, 0, cardW, cardH);
             banner.draw(canvas);
-        } else if (icon != null) {
+        } else if (icon != null && banner == null) {
             int size = cardH * 46 / 100;
             int left = (cardW - size) / 2, top = cardH * 12 / 100;
             icon.setBounds(left, top, left + size, top + size);
@@ -156,7 +177,7 @@ final class Tile extends View {
         } else if (!Catalog.APPS.equals(kind)) {
             drawLine(canvas, inner, cardW / 2f, cardH / 2f - (inner.ascent() + inner.descent()) / 2);
         }
-        if (lift && isFocused() && !moving) canvas.drawRect(card, glare);
+        if (lift && glassRest == null && isFocused() && !moving) canvas.drawRect(card, glare);
         if (moving) canvas.drawColor(0x99000000);
         canvas.restore();
 
@@ -172,10 +193,21 @@ final class Tile extends View {
             canvas.drawRoundRect(half, half, cardW - half, cardH - half, radius - half, radius - half, ring);
         }
         if (moving) drawArrows(canvas);
-        boolean label = banner != null && (labelAlways || labelOnFocus && isFocused());
+        boolean label = (banner != null || glassRest != null && logo != null)
+                && (labelAlways || labelOnFocus && isFocused());
         if (labelH > 0 && label) {
             drawLine(canvas, under, cardW / 2f, cardH + labelH - Ui.dp(getContext(), 6));
         }
+    }
+
+    /** Sets logoBox to {@code logo}'s shape, centered: nearly the full height for a square glyph. */
+    private void fitLogo(Bitmap logo) {
+        float w = logo.getWidth(), h = logo.getHeight();
+        boolean square = w <= h * 1.1f;
+        float room = square ? cardH * 0.94f : cardH * 0.80f, k = room / h;
+        float dw = Math.min(w * k, cardW * 0.86f), dh = h * dw / w;
+        float x = (cardW - dw) / 2, y = (cardH - dh) / 2;
+        logoBox.set(x, y, x + dw, y + dh);
     }
 
     private void drawLine(Canvas canvas, TextPaint paint, float x, float baseline) {

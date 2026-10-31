@@ -3,13 +3,19 @@ package tv.dumbtv.home;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
+import android.provider.Settings;
 import android.text.TextUtils;
 
+import java.io.File;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,8 +26,9 @@ import java.util.Map;
 /** Where tiles come from, and which of them the user wants on the home screen. */
 final class Catalog {
     static final String APPS = "apps", INPUTS = "inputs";
-    static final String CAST_ID = "dumbtv.cast", LIVE_TV_ID = "dumbtv.livetv";
+    static final String CAST_ID = "dumbtv.cast", LIVE_TV_ID = "dumbtv.livetv", WIFI_ID = "dumbtv.wifi";
     private static final String LIVE_TV = "com.amazon.tv.livetv";
+    private static final String SETTINGS = "com.amazon.tv.settings.v2";
     private static final String CHANNELS = "vnd.android.cursor.dir/channel";
 
     private Catalog() {}
@@ -40,8 +47,9 @@ final class Catalog {
     }
 
     /**
-     * Two tiles no launcher entry exists for: the TV tuner, which is not a passthrough input and
-     * has no app icon on Fire OS, and the screen that gathers the ways to cast from a phone.
+     * Three tiles no launcher entry exists for: the TV tuner, which is not a passthrough input and
+     * has no app icon on Fire OS, the screen that gathers the ways to cast from a phone, and the
+     * Wi-Fi settings, which are otherwise a few menus deep.
      */
     private static void builtIn(Context c, PackageManager pm, List<Item> out) {
         Intent tuner = new Intent(Intent.ACTION_VIEW).setType(CHANNELS)
@@ -53,6 +61,7 @@ final class Catalog {
             it.artRequested = true;
             it.tintTop = 0xFF3B82D6;
             it.tintBottom = 0xFF1B3A73;
+            if (Ui.glass(c)) it.logo = iconFile(Config.get(c), it.id);
             out.add(it);
         }
         Item cast = new Item(CAST_ID, Ui.t(c, "Cast", "Vom Handy"), new Intent(c, Cast.class));
@@ -62,7 +71,21 @@ final class Catalog {
         cast.artRequested = true;
         cast.tintTop = 0xFF8A5FD1;
         cast.tintBottom = 0xFF3D2A73;
+        if (Ui.glass(c)) cast.logo = iconFile(Config.get(c), cast.id);
         out.add(cast);
+        // Fire OS's own network screen when it is there, or whatever answers the standard action.
+        Intent wifi = new Intent().setClassName(SETTINGS, SETTINGS + ".tv.network.NetworkActivity");
+        if (wifi.resolveActivity(pm) == null) wifi = new Intent(Settings.ACTION_WIFI_SETTINGS);
+        if (wifi.resolveActivity(pm) != null) {
+            Item it = new Item(WIFI_ID, Ui.t(c, "Wi-Fi", "WLAN"), wifi);
+            it.leanback = true;
+            it.icon = c.getDrawable(R.drawable.tile_wifi);
+            it.artRequested = true;
+            it.tintTop = 0xFF2FA88F;
+            it.tintBottom = 0xFF14574C;
+            if (Ui.glass(c)) it.logo = iconFile(Config.get(c), it.id);
+            out.add(it);
+        }
     }
 
     private static void collect(PackageManager pm, Map<String, Item> found, String category,
@@ -80,11 +103,47 @@ final class Catalog {
         }
     }
 
-    /** Loads a banner, plus an icon for Afterglow or when there is no banner. Slow: off the UI thread. */
-    static void art(PackageManager pm, Item it, boolean cornerIcon) {
+    /**
+     * Loads a banner, plus an icon for Afterglow or when there is no banner. Slow: off the UI
+     * thread. {@code art.<id>=<package>} in home.conf borrows another app's banner, which also
+     * works when that app is switched off.
+     */
+    static void art(Context c, Item it, boolean cornerIcon) {
         if (it.info == null) return;
-        it.banner = it.info.loadBanner(pm);
+        PackageManager pm = c.getPackageManager();
+        Config cfg = Config.get(c);
+        Drawable other = borrowed(pm, cfg.get("art." + it.id, null));
+        it.banner = other != null ? other : it.info.loadBanner(pm);
         if (it.banner == null || cornerIcon) it.icon = it.info.loadIcon(pm);
+        if ("glass".equals(cfg.get(Config.TILE_STYLE))) {
+            it.logo = iconFile(cfg, it.id);
+            Drawable art = it.banner != null ? it.banner : it.icon;
+            if (it.logo == null && art != null) {
+                it.logo = Glass.logo(art, "white".equals(cfg.get(Config.LOGOS)));
+            }
+        }
+    }
+
+    private static Bitmap iconFile(Config cfg, String id) {
+        File f = cfg.icon(id);
+        return f == null ? null : BitmapFactory.decodeFile(f.getPath());
+    }
+
+    private static Drawable borrowed(PackageManager pm, String pkg) {
+        if (pkg == null) return null;
+        try {
+            PackageInfo info = pm.getPackageInfo(pkg,
+                    PackageManager.GET_ACTIVITIES | PackageManager.MATCH_DISABLED_COMPONENTS);
+            if (info.activities != null) {
+                for (ActivityInfo a : info.activities) {
+                    Drawable banner = a.loadBanner(pm);
+                    if (banner != null) return banner;
+                }
+            }
+            return info.applicationInfo.loadBanner(pm);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
     }
 
     /**

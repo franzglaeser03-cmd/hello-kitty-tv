@@ -54,7 +54,7 @@ Undo: `./launcher/install.sh --undo` gives HOME back to Amazon's launcher.
 |---|---|
 | Accent | white, blue, cyan, green, amber, red, pink, violet |
 | Tiles | small, medium, large |
-| Layout | rows, or a grid that wraps to as many columns as fit |
+| Layout | rows, a grid that wraps to as many columns as fit, or the top shelf (below) |
 | App order | your order, or recently used: the apps row re-sorts on each return home, newest first. It counts apps opened from dumbtv home, plus apps opened any other way (voice, another app) on Fire OS 6, where the launcher already has usage access. Apps never opened keep your order after the rest |
 | App names | on focus, always, never |
 | Clock | system, 24-hour, 12-hour |
@@ -82,6 +82,55 @@ separate choices.
 | Grid layout | Adaptive background | Adaptive tint |
 |---|---|---|
 | ![Grid layout](../docs/assets/screens/grid.png) | ![Adaptive background](../docs/assets/screens/adaptive.png) | ![Adaptive tint](../docs/assets/screens/tint.png) |
+
+## Top shelf
+
+**Layout › Top shelf** (`layout=shelf`) is modelled on the Apple TV home screen. The focused
+tile's art shows large at the top with its name, over a blur of the same art, and five tiles fit
+across below it. Focus lifts a tile on a shadow with a light glare instead of drawing a ring, and
+the shelf fades away as you scroll down to more tiles. The blur is the art drawn very small and
+scaled up in two steps, so it needs no library and no network. Because the launcher has no
+internet access, the shelf shows each app's own artwork, not live recommendations.
+
+## Glass
+
+**App tile style › Glass** (`tile_style=glass`) goes with the top shelf and a wallpaper: a card you
+can see the wallpaper through, with a shadow, light along the top and a bright rim, and each app's
+logo floating on it with its background cut away. Nothing blurs live, so it costs almost nothing to
+draw; `launcher/wallpapers.py` makes three soft wallpapers that suit it.
+
+- **Glass tone** (`glass_tone`): clear for dark wallpapers, smoked for light ones. Smoked also turns
+  the clock and other text on the wallpaper dark.
+- **Glass logos** (`logos`): their own colors, or white.
+- **Your own icons:** a PNG named after the app in an `icons/` folder next to `home.conf`, such as
+  `icons/com.netflix.ninja.png`, replaces that tile's logo. `dumbtv.livetv`, `dumbtv.cast` and
+  `dumbtv.wifi` are the launcher's own tiles.
+- **Another app's logo:** `art.org.smarttube.stable=com.amazon.firetv.youtube` in `home.conf` gives
+  one tile another app's banner, even when that app is switched off.
+
+The clock, Options and Settings use Tinos (SIL Open Font License, in `assets/fonts/`), which is drawn
+to the measures of Times New Roman.
+
+## Screensaver
+
+The launcher carries a screensaver that shows one picture and nothing else: `screensaver.jpg` (or
+`.png`, `.webp`) next to `home.conf`, or the wallpaper when there is none. Fire OS has no menu for
+third-party screensavers, so it is switched on over adb:
+
+```sh
+adb shell settings put secure screensaver_components tv.dumbtv.home/.Dream
+adb shell settings put secure screensaver_default_component tv.dumbtv.home/.Dream
+adb shell settings put secure contextual_screen_off_timeout 300000
+```
+
+## Live TV, casting and Wi-Fi tiles
+
+Three tiles are not apps. **Live TV** opens the tuner in Amazon's player: Fire OS gives the tuner no
+launcher entry, and it is not a passthrough input, so the inputs row cannot show it. **Cast** opens
+a screen that gathers the ways to cast from a phone, each with what to press on the phone: AirPlay
+(Apple's service, always on, on TVs that have it), Fire OS's screen mirroring, and SmartTube for
+YouTube. **Wi-Fi** opens Fire OS's network settings, otherwise a few menus deep. All three show in
+German on a TV set to German, and can be hidden or moved like any tile.
 
 ## HDMI inputs
 
@@ -127,7 +176,7 @@ Everything lives in one text file on the TV:
 accent=blue
 # small medium large
 tiles=medium
-# rows grid
+# rows grid shelf
 layout=rows
 # custom recent (recent = newest first; the history stays in the app's private storage)
 order=custom
@@ -258,7 +307,11 @@ sdkmanager "platforms;android-25" "build-tools;34.0.0"
 
 On Linux, set `ANDROID_HOME`; `build.sh` finds a JDK 17 in
 `/usr/lib/jvm/java-17-openjdk` (Arch: `pacman -S jdk17-openjdk`). It prefers JDK 17
-because build-tools 34's `d8` has crashed on classes from newer JDKs.
+because build-tools 34's `d8` has crashed on classes from newer JDKs. On Windows, run it
+from Git Bash with `JAVA_HOME` and `ANDROID_HOME` set; no `zip` is needed.
+
+To keep a TV on your own build, add `LAUNCHER_BUILD=1` to `dumbtv.conf`: `scripts/launcher.sh`
+then builds and installs from this checkout instead of downloading the release.
 
 Your build is signed with a key `build.sh` creates on first run, and Android will
 not update the release with it or the other way round. `install.sh` says so; back
@@ -288,6 +341,10 @@ Delete both to stop.
 | `src/.../Catalog.java` | which apps and inputs exist, and their order |
 | `src/.../Item.java` | one app or input |
 | `src/.../Input.java` | the built-in input screen (`TvView`) |
+| `src/.../Cast.java` | the screen that gathers the ways to cast from a phone |
+| `src/.../Glass.java` | the glass cards, and cutting a logo out of its banner |
+| `src/.../Dream.java` | the screensaver that shows one picture |
+| `wallpapers.py` | draws the glass style's wallpapers, standard library only |
 | `src/.../Config.java` | reads and writes `home.conf` |
 | `src/.../Options.java` | the settings screen |
 | `src/.../Ui.java` | shared colours, text and sizes |

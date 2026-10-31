@@ -35,9 +35,9 @@ cp "$FAKE_CURL_DIR/${1##*/}" "$out"
 
 class GatewayTest(unittest.TestCase):
     """Android keeps a default route per network; only one of them reaches the internet."""
-    DEAD = "default via 192.0.2.254 dev eth0 table 1002 proto static\n" \
+    DEAD = "default via 203.0.113.254 dev eth0 table 1002 proto static\n" \
            f"default via {GATEWAY} dev wlan0 table 1007 proto static"
-    AGENTS = "NetworkAgentInfo{ ni{[type: Ethernet[]]} lp{{ServerAddress: 192.0.2.254 }} nc{[ Capabilities: INTERNET ]} }\n" \
+    AGENTS = "NetworkAgentInfo{ ni{[type: Ethernet[]]} lp{{ServerAddress: 203.0.113.254 }} nc{[ Capabilities: INTERNET ]} }\n" \
              f"NetworkAgentInfo{{ ni{{[type: WIFI[]]}} lp{{{{ServerAddress: {GATEWAY} }}}} nc{{[ Capabilities: INTERNET&VALIDATED ]}} }}"
 
     def gateway(self, **state):
@@ -61,7 +61,7 @@ class GatewayTest(unittest.TestCase):
 
     def test_behind_a_vpn_the_validated_network_decides(self):
         self.assertEqual(self.gateway(
-            routes=self.DEAD, route_get="1.1.1.1 dev tun0 table 1050 src 10.0.0.1 uid 2000",
+            routes=self.DEAD, route_get="1.1.1.1 dev tun0 table 1050 src 203.0.113.7 uid 2000",
             connectivity=self.AGENTS), GATEWAY)
 
     def test_a_tv_answering_neither_still_reads_the_route_table(self):
