@@ -33,6 +33,42 @@ cp "$FAKE_CURL_DIR/${1##*/}" "$out"
 """
 
 
+class GatewayTest(unittest.TestCase):
+    """Android keeps a default route per network; only one of them reaches the internet."""
+    DEAD = "default via 192.0.2.254 dev eth0 table 1002 proto static\n" \
+           f"default via {GATEWAY} dev wlan0 table 1007 proto static"
+    AGENTS = "NetworkAgentInfo{ ni{[type: Ethernet[]]} lp{{ServerAddress: 192.0.2.254 }} nc{[ Capabilities: INTERNET ]} }\n" \
+             f"NetworkAgentInfo{{ ni{{[type: WIFI[]]}} lp{{{{ServerAddress: {GATEWAY} }}}} nc{{[ Capabilities: INTERNET&VALIDATED ]}} }}"
+
+    def gateway(self, **state):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            path = tmp / "state.json"
+            path.write_text(json.dumps(dict(state, packages={})))
+            log = tmp / "commands.log"
+            log.touch()
+            env = dict(os.environ, ADB=str(ROOT / "tests" / "fake_tv.py"), SERIAL="test-tv",
+                       FAKE_TV_STATE=str(path), FAKE_TV_LOG=str(log))
+            result = subprocess.run(
+                ["bash", "-c", 'source "$1"; gateway', "bash", str(ROOT / "scripts" / "lib.sh")],
+                env=env, capture_output=True, text=True, timeout=30)
+        return result.stdout.strip()
+
+    def test_the_route_in_use_beats_a_dead_wired_gateway_listed_first(self):
+        self.assertEqual(self.gateway(
+            routes=self.DEAD,
+            route_get=f"1.1.1.1 via {GATEWAY} dev wlan0 table 1007 src 198.51.100.7 uid 2000"), GATEWAY)
+
+    def test_behind_a_vpn_the_validated_network_decides(self):
+        self.assertEqual(self.gateway(
+            routes=self.DEAD, route_get="1.1.1.1 dev tun0 table 1050 src 10.0.0.1 uid 2000",
+            connectivity=self.AGENTS), GATEWAY)
+
+    def test_a_tv_answering_neither_still_reads_the_route_table(self):
+        self.assertEqual(self.gateway(routes=f"default via {GATEWAY} dev wlan0 table 1003 proto static"),
+                         GATEWAY)
+
+
 class RouteTest(unittest.TestCase):
     def route_ips(self, props):
         with tempfile.TemporaryDirectory() as tmp:

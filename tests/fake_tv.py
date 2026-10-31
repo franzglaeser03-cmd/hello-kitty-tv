@@ -107,6 +107,10 @@ elif words[:1] == ['getprop'] and len(words) == 2 and words[1] in state.get('pro
     print(state['props'][words[1]])
 elif command == 'ip route show table all' and 'routes' in state:
     print(state['routes'])
+elif command == 'ip route get 1.1.1.1' and 'route_get' in state:
+    print(state['route_get'])
+elif command == 'dumpsys connectivity' and 'connectivity' in state:
+    print(state['connectivity'])
 elif command == 'cmd package help':
     print('Package manager (package) commands:\n  path [--user USER_ID] PACKAGE')
 elif words[:2] == ['pm', 'path']:

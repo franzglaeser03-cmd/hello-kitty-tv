@@ -253,7 +253,17 @@ front_activity() {
 is_fireos()  { case $(dev1 getprop ro.product.manufacturer) in Amazon*) return 0 ;; *) return 1 ;; esac; }
 gateway() {
   local gw
-  gw=$(dev 'ip route show table all' \
+  # The route internet traffic really takes. Android keeps a default route for every network
+  # it is attached to, so a wired port behind a box with no internet (an unpaired range
+  # extender, on a Fire TV 4-Series) lists its dead gateway first; every lookup then went there.
+  gw=$(dev 'ip route get 1.1.1.1' \
+    | awk '/ via / && !/ dev tun/ { for (i=1;i<=NF;i++) if ($i=="via") { print $(i+1); exit } }')
+  # A VPN holding the default route hides it: ask which network Android found the internet on.
+  [[ -z $gw ]] && gw=$(dev 'dumpsys connectivity' \
+    | awk 'index($0, "NetworkAgentInfo{ ni") && /VALIDATED/ && !/type: VPN/ {
+             if (match($0, /ServerAddress: [0-9.]+/)) { print substr($0, RSTART + 15, RLENGTH - 15); exit }
+           }')
+  [[ -z $gw ]] && gw=$(dev 'ip route show table all' \
     | awk '/^default/ && / via / && !/linkdown/ && !/ dev tun/ {
              for (i=1;i<=NF;i++) if ($i=="via") { print $(i+1); exit }
            }')
