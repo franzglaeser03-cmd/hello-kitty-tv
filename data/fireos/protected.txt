@@ -11,3 +11,5 @@ com.amazon.ftvads.deeplinking
 com.amazon.tv.csapp
 com.amazon.device.software.ota
 com.amazon.device.software.ota.override
+com.amazon.adep                        # device diagnostics analyzers, seen protected on PS7717 TVs
+com.amazon.diode                       # connectivity and speech analysis, seen protected on PS7717 TVs

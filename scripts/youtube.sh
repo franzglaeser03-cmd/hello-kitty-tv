@@ -30,11 +30,13 @@ fi
 
 PKG=org.smarttube.stable
 YT=com.amazon.firetv.youtube
-APK_URL=https://github.com/yuliskov/SmartTube/releases/download/32.56s/SmartTube_stable_32.56_universal.apk
-# Pinned: releases are immutable, so this hash identifies the exact build.
-APK_SHA256=4a35b90940612e048e4e9cb9e10379f7db1e84f30375994129f10a571ee04ce5
+APK_URL=https://github.com/yuliskov/SmartTube/releases/download/32.68s/SmartTube_stable_32.68_armeabi-v7a.apk
+# Pinned: releases are immutable, so this hash identifies the exact build. Signed with the same
+# certificate as 32.56 (SHA-256 109735aa...482a); compare it again when this changes, because the
+# project's old signing key was stolen in 2025. armeabi-v7a is the only ABI Fire TV televisions run.
+APK_SHA256=2130b23b17ed5cfd324baec81750a2be22059212b6ee17449f21cae2cb3a60d9
 # versionCode of that build. Update it with the URL and hash.
-APK_VERSION_CODE=2446
+APK_VERSION_CODE=2458
 HOME_DIR=/sdcard/Android/data/tv.dumbtv.home/files
 
 step "plan"
@@ -72,7 +74,7 @@ installed_code() { dev "dumpsys package $PKG" | sed -n 's/.*versionCode=\([0-9]*
 # the first run fail and a re-run pass. What the TV reports afterwards is the answer;
 # a SmartTube newer than the pinned build (updated from inside the app) also counts.
 for attempt in 1 2; do
-  out=$("$ADB" -s "$SERIAL" install -r "$APK" 2>&1 | tail -1)
+  out=$(adb_install "$APK")
   printf '  %s\n' "$out"
   adb_reconnect
   code=$(installed_code)

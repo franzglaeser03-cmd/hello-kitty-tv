@@ -23,6 +23,14 @@ APK_URL=https://f-droid.org/repo/dnsfilter.android_$APK_VERSION.apk
 APK_SHA256=3ddd0db322d1ca5fe950ea29dc1788af6e6581bb5f34694085fb4aa2e77b68ad
 CONF_URL=https://raw.githubusercontent.com/IngoZenz/personaldnsfilter/master/app/src/main/assets/dnsfilter.conf
 HAGEZI_URL=https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.amazon-onlydomains.txt
+# ADBLOCK adds a general ad and tracker list on top of the Amazon one.
+case $ADBLOCK in
+  amazon) ADS_URL="" ;;
+  light) ADS_URL=https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/light-onlydomains.txt ;;
+  normal) ADS_URL=https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/multi-onlydomains.txt ;;
+  pro) ADS_URL=https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt ;;
+  *) die "ADBLOCK must be amazon, light, normal or pro, got '$ADBLOCK'" ;;
+esac
 # Private work dir: fixed paths under /tmp can be pre-seeded by another local user.
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/dumbtv.XXXXXX") || die "could not create a temp dir"
 trap 'rm -rf "$WORK"' EXIT
@@ -50,6 +58,9 @@ for prop in net.dns1 net.dns2 net.dns3 net.dns4; do
 done
 [[ $ROUTES == "$GW" ]] || note "also routed    ${ROUTES#"$GW"; }"
 note "list           HaGeZi Amazon trackers + data/blocklists/extra-hosts.txt"
+if [[ -n $ADS_URL ]]; then
+  note "ad list        HaGeZi $ADBLOCK, minus data/blocklists/allow-hosts.txt"
+fi
 upstream=$(fallback_dns) || exit 1
 if [[ -n $upstream ]]; then
   note "upstream       $DNS_UPSTREAM (port 53, UDP)"
@@ -73,7 +84,12 @@ if [[ $DRY_RUN == 1 ]]; then
   note "[dry-run] download, compose and push a blocklist"
 else
   fetch "$RAW" "$HAGEZI_URL" || die "could not download the tracker list"
-  compose_blocklist "$RAW" > "$LIST"
+  if [[ -n $ADS_URL ]]; then
+    fetch "$WORK/ads.txt" "$ADS_URL" || die "could not download the $ADBLOCK ad list"
+    compose_blocklist "$RAW" "$WORK/ads.txt" > "$LIST"
+  else
+    compose_blocklist "$RAW" > "$LIST"
+  fi
   note "$(grep -c . "$LIST") entries"
 fi
 
@@ -89,7 +105,7 @@ elif [[ $DRY_RUN == 0 ]]; then
   else got=$(shasum -a 256 "$APK" | awk '{print $1}'); fi
   [[ $got == "$APK_SHA256" ]] || die "checksum mismatch for $APK_URL (got $got) — not installing"
   note "checksum ok"
-  out=$("$ADB" -s "$SERIAL" install -r "$APK" 2>&1 | tail -1)
+  out=$(adb_install "$APK")
   printf '  %s\n' "$out"
   # Replacing an app that holds the VPN can cut adb off before it prints Success, so the
   # version the TV reports afterwards is the real answer.
@@ -320,12 +336,12 @@ if [[ $DRY_RUN == 0 && $restored == 0 ]]; then
   dev "test -d $DIR" >/dev/null 2>&1 || die "the app did not create $DIR — is it installed?"
   dev "am force-stop $PKG" >/dev/null 2>&1
   sleep 2
-  "$ADB" -s "$SERIAL" push "$CONF_OUT" "$DIR/dnsfilter.conf" | tail -1 || die "push of dnsfilter.conf failed"
+  push_checked "$CONF_OUT" "$DIR/dnsfilter.conf" || die "push of dnsfilter.conf failed"
   # A stale index makes the app keep serving the previous list. The marker must exist:
   # the app's rebuild ends by deleting IDX_OUTDATED and throws if it is not there.
   dev "rm -rf $DIR/FILTERHOSTS.TXT.idx; touch $DIR/IDX_OUTDATED" >/dev/null 2>&1
-  "$ADB" -s "$SERIAL" push "$LIST" "$DIR/FILTERHOSTS.TXT" | tail -1 || die "push of FILTERHOSTS.TXT failed"
-  "$ADB" -s "$SERIAL" push "$WORK/dld_cnt.txt" "$DIR/FILTERHOSTS.TXT.DLD_CNT" | tail -1 \
+  push_checked "$LIST" "$DIR/FILTERHOSTS.TXT" || die "push of FILTERHOSTS.TXT failed"
+  push_checked "$WORK/dld_cnt.txt" "$DIR/FILTERHOSTS.TXT.DLD_CNT" \
     || die "push of FILTERHOSTS.TXT.DLD_CNT failed"
 fi
 

@@ -81,6 +81,7 @@ put "ping router ms" "$(dev "ping -c5 -i0.3 -W2 $gw" | tr -d '\r' | sed -n 's/.*
 launch_ms() {
   local pkg=$1 comp out
   comp=$(dev "cmd package resolve-activity --brief -c android.intent.category.LEANBACK_LAUNCHER -a android.intent.action.MAIN $pkg" | tr -d '\r' | tail -1)
+  case $comp in */*) ;; *) comp=$(dev "cmd package resolve-activity --brief -c android.intent.category.LAUNCHER -a android.intent.action.MAIN $pkg" | tr -d '\r' | tail -1) ;; esac
   case $comp in */*) ;; *) return 1 ;; esac
   dev "am force-stop $pkg" >/dev/null
   sleep 2

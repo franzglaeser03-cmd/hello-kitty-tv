@@ -20,6 +20,9 @@ import java.util.Map;
 /** Where tiles come from, and which of them the user wants on the home screen. */
 final class Catalog {
     static final String APPS = "apps", INPUTS = "inputs";
+    static final String CAST_ID = "dumbtv.cast", LIVE_TV_ID = "dumbtv.livetv";
+    private static final String LIVE_TV = "com.amazon.tv.livetv";
+    private static final String CHANNELS = "vnd.android.cursor.dir/channel";
 
     private Catalog() {}
 
@@ -32,7 +35,34 @@ final class Catalog {
         List<Item> out = new ArrayList<>(found.values());
         Collator collator = Collator.getInstance();
         Collections.sort(out, (a, b) -> collator.compare(a.label.toString(), b.label.toString()));
+        builtIn(c, pm, out);
         return out;
+    }
+
+    /**
+     * Two tiles no launcher entry exists for: the TV tuner, which is not a passthrough input and
+     * has no app icon on Fire OS, and the screen that gathers the ways to cast from a phone.
+     */
+    private static void builtIn(Context c, PackageManager pm, List<Item> out) {
+        Intent tuner = new Intent(Intent.ACTION_VIEW).setType(CHANNELS)
+                .setClassName(LIVE_TV, LIVE_TV + ".TvChannelsPlayerActivityAlias");
+        if (tuner.resolveActivity(pm) != null) {
+            Item it = new Item(LIVE_TV_ID, Ui.t(c, "Live TV", "Kabel-TV"), tuner);
+            it.leanback = true;
+            it.icon = c.getDrawable(R.drawable.tile_tv);
+            it.artRequested = true;
+            it.tintTop = 0xFF3B82D6;
+            it.tintBottom = 0xFF1B3A73;
+            out.add(it);
+        }
+        Item cast = new Item(CAST_ID, Ui.t(c, "Cast", "Vom Handy"), new Intent(c, Cast.class));
+        cast.leanback = true;
+        cast.own = true;
+        cast.icon = c.getDrawable(R.drawable.tile_cast);
+        cast.artRequested = true;
+        cast.tintTop = 0xFF8A5FD1;
+        cast.tintBottom = 0xFF3D2A73;
+        out.add(cast);
     }
 
     private static void collect(PackageManager pm, Map<String, Item> found, String category,

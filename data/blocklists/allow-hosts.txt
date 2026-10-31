@@ -1,0 +1,114 @@
+# Hosts the general ad lists (ADBLOCK=light, normal or pro) must never take away. Only those
+# lists pass through this file: the Amazon list and extra-hosts.txt are decided by their own
+# rules. An entry also keeps its parents off the list, because the filter blocks every
+# subdomain of a listed domain. A subdomain that is listed on its own stays blocked, so
+# allowing netflix.com does not bring back Netflix's telemetry host.
+
+# --- YouTube and SmartTube ---
+youtube.com
+www.youtube.com
+youtubei.googleapis.com
+googlevideo.com
+ytimg.com
+i.ytimg.com
+ggpht.com
+yt3.ggpht.com
+accounts.google.com
+oauth2.googleapis.com
+www.googleapis.com
+sponsor.ajay.app
+github.com
+objects.githubusercontent.com
+release-assets.githubusercontent.com
+raw.githubusercontent.com
+
+# --- Prime Video and Amazon's own apps ---
+primevideo.com
+www.primevideo.com
+amazonvideo.com
+atv-ps.amazon.com
+atv-ps-eu.amazon.com
+atv-ps-eu.amazon.de
+atv-ext.amazon.com
+atv-ext-eu.amazon.com
+media-amazon.com
+m.media-amazon.com
+images-amazon.com
+ecx.images-amazon.com
+ssl-images-amazon.com
+pv-cdn.net
+aiv-cdn.net
+aiv-delivery.net
+api.amazon.com
+api.amazon.de
+www.amazon.com
+www.amazon.de
+amazon.de
+appstore-tv-prod-na.amazon.com
+appstore-tv-prod-eu.amazon.com
+mas-ext.amazon.com
+mas-ext-eu.amazon.com
+mas-sdk.amazon.com
+ktpx.amazon.com
+a4k.amazon.com
+
+# --- Netflix ---
+netflix.com
+www.netflix.com
+api-global.netflix.com
+nflxvideo.net
+nflxso.net
+nflxext.com
+nflximg.net
+nflximg.com
+
+# --- Disney+ ---
+disneyplus.com
+www.disneyplus.com
+disney-plus.net
+bamgrid.com
+disney.api.edge.bamgrid.com
+dssott.com
+registerdisney.go.com
+
+# --- HBO Max ---
+hbomax.com
+www.hbomax.com
+max.com
+play.max.com
+discomax.com
+wbd.com
+
+# --- Apple TV, and the aerial videos of the screensaver ---
+apple.com
+tv.apple.com
+play.itunes.apple.com
+mzstatic.com
+aaplimg.com
+sylvan.apple.com
+hls.apple.com
+
+# --- German public broadcasters ---
+zdf.de
+www.zdf.de
+api.zdf.de
+ardmediathek.de
+www.ardmediathek.de
+ard.de
+daserste.de
+swr.de
+tagesschau.de
+arte.tv
+www.arte.tv
+api.arte.tv
+
+# --- video delivery networks those apps stream from ---
+akamaized.net
+akamaihd.net
+cloudfront.net
+fastly.net
+llnwd.net
+
+# --- time and connectivity checks ---
+time.android.com
+connectivitycheck.gstatic.com

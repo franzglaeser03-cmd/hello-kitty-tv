@@ -32,7 +32,10 @@ if [[ $DRY_RUN == 1 ]]; then
 fi
 confirm "Replace the home screen on $SERIAL?" || die "cancelled"
 
-ADB=$ADB ADB_SERIAL=$SERIAL "$ROOT/launcher/install.sh" || die "launcher install failed (see above)"
+# LAUNCHER_BUILD=1 in dumbtv.conf keeps a TV on a build from this checkout: Android refuses to
+# update it with the release, which is signed with another key.
+ADB=$ADB ADB_SERIAL=$SERIAL "$ROOT/launcher/install.sh" ${LAUNCHER_BUILD:+--build} \
+  || die "launcher install failed (see above)"
 
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1

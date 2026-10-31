@@ -93,7 +93,19 @@ build_apk() {
 
 # adb ends its output with a blank line, so take the line that carries the result.
 install_apk() {
+  local tmp=/data/local/tmp/dumbtv-home.apk try
   out=$(adb_ install -r "$APK" 2>&1 | grep -m1 -E 'Success|Failure|failed' || true)
+  # A weak Wi-Fi link can drop the streamed install; a copied file is installed from the TV.
+  if [[ $out != *Success* && $out != *Failure* ]]; then
+    for try in 1 2 3; do
+      sleep 5
+      "$ADB" connect "${ADB_SERIAL:-}" >/dev/null 2>&1 || true
+      adb_ push "$APK" "$tmp" >/dev/null 2>&1 || continue
+      out=$(sh_ pm install -r "$tmp" 2>&1 | grep -m1 -E 'Success|Failure|failed' || true)
+      [[ $out == *Success* || $out == *Failure* ]] && break
+    done
+    sh_ rm -f "$tmp" >/dev/null 2>&1 || true
+  fi
 }
 
 if [[ $mode == build ]]; then

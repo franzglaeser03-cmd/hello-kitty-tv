@@ -49,6 +49,11 @@ if [[ $(javac_major "$JAVA_HOME") -ge 21 ]]; then
   echo "warning: $JAVA_HOME is JDK $(javac_major "$JAVA_HOME"); build-tools' d8 crashed on JDK 27 output — install a JDK 17 if this fails" >&2
 fi
 export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# On Windows (Git Bash) d8 and apksigner are batch files, and there is usually no zip.
+D8=$BT/d8; [[ -f $D8 ]] || D8=$BT/d8.bat
+APKSIGNER=$BT/apksigner; [[ -f $APKSIGNER ]] || APKSIGNER=$BT/apksigner.bat
 
 KEYSTORE=${DUMBTV_KEYSTORE:-$PWD/release.keystore}
 KEYPASS=${DUMBTV_KEYPASS:-dumbtvhome}
@@ -59,6 +64,8 @@ if [[ ! -f $KEYSTORE ]]; then
 fi
 
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/dumbtv-home.XXXXXX")
+# Paths also go into list files for javac and d8, where Git Bash cannot translate them.
+if command -v cygpath >/dev/null; then WORK=$(cygpath -m "$WORK"); fi
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/gen" "$WORK/classes" build
 
@@ -73,13 +80,17 @@ find src "$WORK/gen" -name '*.java' > "$WORK/sources.txt"
   -classpath "$JAR" -d "$WORK/classes" @"$WORK/sources.txt"
 
 find "$WORK/classes" -name '*.class' > "$WORK/classes.txt"
-"$BT/d8" --release --min-api "$MIN_SDK" --lib "$JAR" --output "$WORK" @"$WORK/classes.txt"
-(cd "$WORK" && zip -q -X app.apk classes.dex)
+"$D8" --release --min-api "$MIN_SDK" --lib "$JAR" --output "$WORK" @"$WORK/classes.txt"
+if command -v zip >/dev/null; then
+  (cd "$WORK" && zip -q -X app.apk classes.dex)
+else
+  "$JAVA_HOME/bin/jar" -uMf "$WORK/app.apk" -C "$WORK" classes.dex
+fi
 
 "$BT/zipalign" -f -p 4 "$WORK/app.apk" "$WORK/aligned.apk"
-"$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYPASS" --key-pass "pass:$KEYPASS" \
+"$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYPASS" --key-pass "pass:$KEYPASS" \
   --out build/dumbtv-home.apk "$WORK/aligned.apk"
-"$BT/apksigner" verify build/dumbtv-home.apk
+"$APKSIGNER" verify build/dumbtv-home.apk
 
 perms=$("$BT/aapt2" dump permissions build/dumbtv-home.apk | grep -c 'uses-permission' || true)
 printf 'built build/dumbtv-home.apk  %s bytes  %s uses-permission entries\n' \

@@ -10,6 +10,7 @@
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+ADBLOCK_ARG=""
 KEEP_ARG=""; REMOVE_ARG=""; ALEXA_ARG=""; SYSTEM_DNS_ARG=""
 PRIME_ARG=""; LAUNCHER_ARG=""; DNSFILTER_ARG=""; YOUTUBE_ARG=""
 DNS_UPSTREAM_SET=0; DNS_UPSTREAM_ARG=""
@@ -27,6 +28,9 @@ while [[ $# -gt 0 ]]; do
     --dns-upstream)
       [[ $# -ge 2 ]] || die '--dns-upstream takes resolver IPs; pass "" to clear them'
       DNS_UPSTREAM_SET=1; DNS_UPSTREAM_ARG=$2; shift 2 ;;
+    --adblock)
+      case ${2:-} in amazon|light|normal|pro) ;; *) die "--adblock takes amazon, light, normal or pro" ;; esac
+      ADBLOCK_ARG=$2; shift 2 ;;
     -y|--yes)     ASSUME_YES=1; shift ;;
     --dry-run)    DRY_RUN=1; shift ;;
     *) die "unknown flag: $1" ;;
@@ -113,6 +117,11 @@ else
 fi
 DNS_UPSTREAM=$(printf '%s\n' "$DNS_UPSTREAM" | awk '{$1=$1; print}')
 fallback_dns >/dev/null || exit 1
+# Not asked. A general ad list for the filter on top of the Amazon one; keep a set value.
+ADBLOCK=${ADBLOCK_ARG:-$([[ -f $CONF ]] && sed -n 's/^ADBLOCK=//p' "$CONF" | tail -1)}
+ADBLOCK=${ADBLOCK:-amazon}
+# Not asked. Set by hand for a TV running dumbtv home built from this checkout; keep a set value.
+LAUNCHER_BUILD=$([[ -f $CONF ]] && sed -n 's/^LAUNCHER_BUILD=//p' "$CONF" | tail -1)
 
 if [[ $DRY_RUN == 1 ]]; then
   step "would write $CONF"
@@ -136,6 +145,8 @@ SYSTEM_DNS=$SYSTEM_DNS
 YOUTUBE=$YOUTUBE
 FILTER_AUTOSTART=$FILTER_AUTOSTART
 DNS_UPSTREAM="$DNS_UPSTREAM"
+ADBLOCK=$ADBLOCK
+LAUNCHER_BUILD=$LAUNCHER_BUILD
 EOF_CONF
 
 # Prove the file before anyone sources it.
@@ -151,4 +162,5 @@ note "remove:  ${EXTRA:-nothing}"
 note "keep:    ${KEEP:-nothing extra}"
 note "prime=$PRIME alexa=$ALEXA launcher=$LAUNCHER dnsfilter=$DNSFILTER system_dns=$SYSTEM_DNS youtube=$YOUTUBE"
 note "dns upstream: ${DNS_UPSTREAM:-the router}"
+note "ad list: $ADBLOCK"
 note "change any answer later by running this again"

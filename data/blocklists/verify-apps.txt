@@ -1,0 +1,11 @@
+# With a general ad list on (ADBLOCK other than amazon), verify.sh checks these still resolve.
+# One host per streaming service: a list update that takes one away shows here first.
+www.primevideo.com
+www.netflix.com
+www.disneyplus.com
+www.hbomax.com
+tv.apple.com
+www.zdf.de
+www.ardmediathek.de
+www.arte.tv
+sponsor.ajay.app

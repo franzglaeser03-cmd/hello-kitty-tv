@@ -101,6 +101,13 @@ else
 fi
 acmd cmd netpolicy set restrict-background false >/dev/null 2>&1
 
+step "speed tuning"
+if [[ $DRY_RUN == 1 ]]; then
+  note "[dry-run] scripts/speed.sh --undo"
+else
+  ADB=$ADB ADB_SERIAL=$SERIAL "$ROOT/scripts/speed.sh" --undo || note "speed.sh --undo did not finish; the defaults come back with a factory reset"
+fi
+
 step "on-device hooks"
 # Without this the TV keeps sending DNS through a filter the user just tried to
 # undo, and HOME stays hijacked.

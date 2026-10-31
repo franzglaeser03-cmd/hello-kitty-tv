@@ -34,7 +34,9 @@ load_conf() {
   SYSTEM_DNS=${SYSTEM_DNS:-0}
   FILTER_AUTOSTART=${FILTER_AUTOSTART:-1}
   DNS_UPSTREAM=${DNS_UPSTREAM:-}
+  ADBLOCK=${ADBLOCK:-amazon}
   [[ -f $CONF ]] && source "$CONF"
+  ADBLOCK=${ADBLOCK:-amazon}
   KEEP_APPS=${KEEP_APPS:-}; REMOVE_EXTRA=${REMOVE_EXTRA:-}
   PRIME=${PRIME:-1}; ALEXA=${ALEXA:-1}; LAUNCHER=${LAUNCHER:-1}; DNSFILTER=${DNSFILTER:-1}
   SYSTEM_DNS=${SYSTEM_DNS:-0}
@@ -48,16 +50,38 @@ cleanup_list() {
   if [[ $ALEXA == 0 ]]; then list_of "$(fos alexa.txt)" | awk '{print $1}'; fi
 }
 
-# The DNS filter's list: the downloaded tracker feed $1 plus this repo's hosts.
+# Takes off the general ad list $2 everything in allow-hosts.txt, and with ALEXA=1 what Alexa
+# needs. The filter blocks every subdomain of a listed domain, so an allowed host's parents go
+# too; a subdomain listed on its own stays.
+general_list() {
+  grep -v '^#' "$1" | tr 'A-Z' 'a-z' | awk 'NR == FNR {
+      host = $1
+      drop[host] = 1
+      while (sub(/^[^.]*\./, "", host) && index(host, ".")) drop[host] = 1
+      next
+    }
+    NF && !($1 in drop)' <(
+      list_of "$DATA/blocklists/allow-hosts.txt"
+      if [[ $ALEXA == 1 ]]; then list_of "$DATA/blocklists/alexa-hosts.txt"; fi
+    ) -
+}
+
+# The DNS filter's list: the downloaded tracker feed $1 plus this repo's hosts, and the
+# general ad list $2 when ADBLOCK asks for one.
 # Prime Video and Alexa need some of those hosts, so the owner's answers decide.
 compose_blocklist() {
   {
     grep -v '^#' "$1"
     list_of "$DATA/blocklists/extra-hosts.txt"
     if [[ $ALEXA == 0 ]]; then list_of "$DATA/blocklists/alexa-hosts.txt"; fi
+    if [[ -n ${2:-} ]]; then
+      general_list "$2"
+      list_of "$DATA/blocklists/app-telemetry.txt"
+    fi
   } | awk 'NF' | if [[ $PRIME == 1 ]]; then
-    grep -viE 'aiv-delivery|aiv-cdn|^device-messaging-na\.amazon\.com$' || true
-  else cat; fi
+    # The videorolls hosts on aiv-cdn only serve promo clips, not the films.
+    awk '!/aiv-delivery|aiv-cdn|^device-messaging-na\.amazon\.com$/ || /videorolls/'
+  else cat; fi | awk '!seen[$0]++'
 }
 
 # Hosts verify.sh and the filter's self-test expect to be blocked.
@@ -279,6 +303,12 @@ uid_of()     { dev "dumpsys package $1" | sed -n 's/.*userId=\([0-9]*\).*/\1/p' 
 present() {
   local out rc=0
   out=$(dev_ok "pm path $1") || rc=$?
+  # A TV on weak Wi-Fi drops adb for a few seconds now and then; a whole pass should survive that.
+  if [[ $rc == 2 && $SERIAL == *:* ]]; then
+    adb_reconnect
+    rc=0
+    out=$(dev_ok "pm path $1") || rc=$?
+  fi
   [[ $rc == 2 ]] && die "device $SERIAL stopped responding — reconnect and re-run"
   grep -q '^package:' <<<"$out"
 }
@@ -286,6 +316,11 @@ present() {
 is_system() {
   local out rc=0
   out=$(dev_ok "pm list packages -s") || rc=$?
+  if [[ $rc == 2 && $SERIAL == *:* ]]; then
+    adb_reconnect
+    rc=0
+    out=$(dev_ok "pm list packages -s") || rc=$?
+  fi
   [[ $rc == 2 ]] && die "device $SERIAL stopped responding — reconnect and re-run"
   tr -d '\r' <<<"$out" | grep -qx "package:$1"
 }
@@ -318,6 +353,36 @@ reboot_wait() {
     sleep 5
   done
   die "device did not report boot_completed; check the TV by hand before running anything else"
+}
+
+# Copies $1 to $2 on the TV and checks the size that arrived. On a weak link a push can end with
+# nothing but "failed to read copy response: EOF", and a short file would pass for a whole one.
+push_checked() {
+  local src=$1 dst=$2 size try
+  size=$(wc -c < "$src" | tr -d ' ')
+  for try in 1 2 3 4; do
+    "$ADB" -s "$SERIAL" push "$src" "$dst" 2>&1 | tail -1
+    [[ $(dev1 "wc -c < $dst") == "$size" ]] && return 0
+    adb_reconnect
+  done
+  return 1
+}
+
+# Installs the APK $1. Streaming `adb install` dies with no message when a weak Wi-Fi link
+# drops mid-transfer, so after a failure the file is copied first and installed from the TV.
+adb_install() {
+  local apk=$1 tmp=/data/local/tmp/dumbtv-install.apk try out
+  out=$("$ADB" -s "$SERIAL" install -r "$apk" 2>&1 | tail -1)
+  case $out in *Success*) printf '%s\n' "$out"; return 0 ;; esac
+  for try in 1 2 3 4; do
+    adb_reconnect
+    "$ADB" -s "$SERIAL" push "$apk" "$tmp" >/dev/null 2>&1 || continue
+    out=$(dev "pm install -r $tmp" | tr -d '\r' | tail -1)
+    case $out in *Success*) dev "rm -f $tmp" >/dev/null; printf '%s\n' "$out"; return 0 ;; esac
+  done
+  dev "rm -f $tmp" >/dev/null
+  printf '%s\n' "$out"
+  return 1
 }
 
 boot_id() { dev1 cat /proc/sys/kernel/random/boot_id; }

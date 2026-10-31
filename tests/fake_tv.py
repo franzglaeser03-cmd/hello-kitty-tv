@@ -107,6 +107,9 @@ elif words[:1] == ['getprop'] and len(words) == 2 and words[1] in state.get('pro
     print(state['props'][words[1]])
 elif command == 'ip route show table all' and 'routes' in state:
     print(state['routes'])
+elif words[:3] == ['wc', '-c', '<'] and 'pushed' in state:
+    pushed = Path(state['pushed'], Path(words[3]).name)
+    print(pushed.stat().st_size if pushed.is_file() else 0)
 elif command == 'ip route get 1.1.1.1' and 'route_get' in state:
     print(state['route_get'])
 elif command == 'dumpsys connectivity' and 'connectivity' in state:

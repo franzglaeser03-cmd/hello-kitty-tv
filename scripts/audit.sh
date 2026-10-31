@@ -11,7 +11,7 @@ need_device
 load_conf
 mkdir -p "$REPORT"
 OUT=$REPORT/audit-$LABEL.txt
-TRAFFIC=/sdcard/Android/data/dnsfilter.android/files/PersonalDNSFilter/log
+TRAFFIC=/sdcard/Android/data/dnsfilter.android/files/PersonalDNSFilter/log/trafficlog
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/dumbtv-audit.XXXXXX") || die "could not create a temp dir"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -79,11 +79,16 @@ capability() {
     done
 
   step "what the TV asked for (DNS filter log)"
-  if dev "cat $TRAFFIC/trafficlog_0.log $TRAFFIC/trafficlog_1.log 2>/dev/null" | tr -d '\r' > "$WORK/log.txt" && [[ -s $WORK/log.txt ]]; then
-    printf '  %s log lines\n\n  blocked, most asked first\n' "$(wc -l < "$WORK/log.txt" | tr -d ' ')"
-    grep -E 'FILTERED|BLOCKED' "$WORK/log.txt" | sed -nE 's/.*(FILTERED|BLOCKED)[^A-Za-z0-9]*([A-Za-z0-9_.-]+).*/\2/p' | sort | uniq -c | sort -rn | head -40 | sed 's/^/  /'
+  if dev "cat $TRAFFIC/*" | tr -d '\r' > "$WORK/log.txt" && grep -q ', Q-' "$WORK/log.txt"; then
+    # Lines read: time client, class, Q-type or A-type, name, answer. A blocked name answers 127.0.0.1.
+    printf '  from %s to %s\n' "$(sed -n 2p "$WORK/log.txt" | cut -d' ' -f1,2)" "$(tail -1 "$WORK/log.txt" | cut -d' ' -f1,2)"
+    awk -F', ' '$3 ~ /^A-/ && ($5 ~ /^(127\.0\.0\.1|0\.0\.0\.0|::1|::)($|,)/) { print $4 }' "$WORK/log.txt" | sort -u > "$WORK/blocked.txt"
+    awk -F', ' '$3 ~ /^Q-/ { print $4 }' "$WORK/log.txt" | sort | uniq -c | sort -rn > "$WORK/asked.txt"
+    printf '  %s different names asked, %s of them blocked\n\n  blocked, most asked first\n' \
+      "$(wc -l < "$WORK/asked.txt" | tr -d ' ')" "$(wc -l < "$WORK/blocked.txt" | tr -d ' ')"
+    awk 'NR == FNR { b[$1] = 1; next } $2 in b' "$WORK/blocked.txt" "$WORK/asked.txt" | head -60 | sed 's/^/  /'
     printf '\n  allowed, most asked first\n'
-    grep -Ev 'FILTERED|BLOCKED' "$WORK/log.txt" | sed -nE 's/.*(ALLOWED|ACCEPTED|FORWARD|FWD|DNS Request)[^A-Za-z0-9]*([A-Za-z0-9_.-]+\.[a-z]{2,}).*/\2/p' | sort | uniq -c | sort -rn | head -60 | sed 's/^/  /'
+    awk 'NR == FNR { b[$1] = 1; next } !($2 in b)' "$WORK/blocked.txt" "$WORK/asked.txt" | head -80 | sed 's/^/  /'
   else
     note "no log yet: the filter is not installed, or nothing has been asked since it started"
   fi

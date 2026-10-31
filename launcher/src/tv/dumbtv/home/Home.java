@@ -10,8 +10,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.TransitionDrawable;
 import android.media.tv.TvInputManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -53,6 +59,7 @@ public final class Home extends Activity {
     static final long UNLOCK_MS = 3000;
     private static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
+    private static final int SHELF_EDGE = 48;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -79,6 +86,12 @@ public final class Home extends Activity {
     private ValueAnimator colorAnimation;
     private int displayedColor, targetColor;
     private boolean tintWallpaper;
+    /** Top shelf layout: the focused tile large over a blur of its art, apps in a grid below. */
+    private boolean shelfMode;
+    private View shelfBlock;
+    private ImageView shelfArt;
+    private TextView shelfName;
+    private Item featured;
 
     private final BroadcastReceiver packages = new BroadcastReceiver() {
         @Override
@@ -127,7 +140,7 @@ public final class Home extends Activity {
 
         Row(String kind, String name, LinearLayout parent) {
             this.kind = kind;
-            int edge = dp(56), bleed = dp(14);
+            int edge = dp(shelfMode ? SHELF_EDGE : 56), bleed = dp(14);
             title = Ui.text(Home.this, 12, Ui.FAINT, Ui.MEDIUM);
             title.setText(name.toUpperCase(Locale.ROOT));
             title.setLetterSpacing(0.14f);
@@ -162,12 +175,13 @@ public final class Home extends Activity {
 
         /** Whichever container currently holds the tiles, following Options › Layout. */
         ViewGroup tiles() {
-            return "grid".equals(cfg.get(Config.LAYOUT)) ? grid : strip;
+            return gridLayout() ? grid : strip;
         }
 
         void setVisible(boolean on) {
-            boolean gridMode = "grid".equals(cfg.get(Config.LAYOUT));
-            title.setVisibility(on ? View.VISIBLE : View.GONE);
+            boolean gridMode = gridLayout();
+            // The top shelf says what the apps are; a heading over them would only add noise.
+            title.setVisibility(on && !(shelfMode && Catalog.APPS.equals(kind)) ? View.VISIBLE : View.GONE);
             scroll.setVisibility(on && !gridMode ? View.VISIBLE : View.GONE);
             grid.setVisibility(on && gridMode ? View.VISIBLE : View.GONE);
         }
@@ -178,6 +192,7 @@ public final class Home extends Activity {
         super.onCreate(state);
         Future<List<Item>> catalog = io.submit(() -> Catalog.apps(this));
         cfg = Config.get(this);
+        shelfMode = "shelf".equals(cfg.get(Config.LAYOUT));
         Future<Map<String, Long>> times = recentFor(Catalog.APPS) == null ? null
                 : io.submit(() -> Recent.times(this));
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
@@ -408,6 +423,19 @@ public final class Home extends Activity {
         }
     }
 
+    /**
+     * Top shelf layout: the shelf stays in view while the focus is on the header or the first line
+     * of apps; deeper down, the focused line sits a third of the way down the screen.
+     */
+    private int shelfTarget(ScrollView page, Rect r) {
+        View content = page.getChildAt(0);
+        int range = Math.max(0, content.getHeight() - page.getHeight());
+        View first = apps.grid.getChildAt(0);
+        int firstBottom = first == null ? 0 : topIn(first, content) + first.getHeight();
+        if (r.centerY() <= firstBottom) return 0;
+        return Math.max(0, Math.min(range, r.top - page.getHeight() / 3));
+    }
+
     /** {@code v}'s top edge in {@code content}'s coordinates. */
     private static int topIn(View v, View content) {
         int y = 0;
@@ -432,13 +460,13 @@ public final class Home extends Activity {
             /** Scrolls in whole rows: the focused row shows complete, and a row starts at the top edge. */
             @Override
             protected int computeScrollDeltaToGetChildRectOnScreen(Rect r) {
-                return rowTarget(this, r) - getScrollY();
+                return (shelfMode ? shelfTarget(this, r) : rowTarget(this, r)) - getScrollY();
             }
 
             @Override
             protected void onLayout(boolean changed, int l, int t, int r, int b) {
                 super.onLayout(changed, l, t, r, b);
-                fitBottom(this);
+                if (!shelfMode) fitBottom(this);
             }
 
             /**
@@ -464,6 +492,12 @@ public final class Home extends Activity {
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setClipChildren(false);
+        if (shelfMode) {
+            // The shelf fades as it scrolls away, so no slice of it stays at the top of the screen.
+            scroll.setOnScrollChangeListener((v, x, y, oldX, oldY) -> {
+                if (shelfBlock != null) shelfBlock.setAlpha(Math.max(0f, 1f - y / (float) dp(120)));
+            });
+        }
         root.addView(scroll, new FrameLayout.LayoutParams(MATCH, MATCH));
 
         LinearLayout column = new LinearLayout(this) {
@@ -528,8 +562,13 @@ public final class Home extends Activity {
         column.setOrientation(LinearLayout.VERTICAL);
         column.setClipChildren(false);
         column.setClipToPadding(false);
-        column.setPadding(0, dp(40), 0, dp(32));
+        column.setPadding(0, dp(shelfMode ? 20 : 40), 0, dp(32));
         scroll.addView(column, new FrameLayout.LayoutParams(MATCH, WRAP));
+
+        if (shelfMode) {
+            buildShelf(column);
+            return root;
+        }
 
         LinearLayout head = new LinearLayout(this);
         head.setClipChildren(false);
@@ -557,6 +596,145 @@ public final class Home extends Activity {
         apps = new Row(Catalog.APPS, "Apps", column);
         inputs = new Row(Catalog.INPUTS, "Inputs", column);
         return root;
+    }
+
+    /**
+     * The time at the top right, then the top shelf: the focused tile's art large with its name,
+     * over a blur of the same art. Apps in a grid below, inputs after them.
+     */
+    private void buildShelf(LinearLayout column) {
+        int edge = dp(SHELF_EDGE);
+        LinearLayout head = new LinearLayout(this);
+        head.setClipChildren(false);
+        head.setClipToPadding(false);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(edge, 0, edge, 0);
+        clock = Ui.text(this, 20, Ui.TEXT, Ui.MEDIUM);
+        date = Ui.text(this, 15, Ui.MUTED, Ui.MEDIUM);
+        date.setVisibility(View.GONE);
+        meter = new Meter(this);
+        meter.setVisibility(View.GONE);
+        head.addView(meter, new LinearLayout.LayoutParams(WRAP, WRAP));
+        head.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        head.addView(chip(Ui.t(this, "Options", "Optionen"), v -> startActivity(new Intent(this, Options.class))));
+        head.addView(chip(Ui.t(this, "Settings", "Einstellungen"), v -> openSettings()));
+        LinearLayout.LayoutParams at = new LinearLayout.LayoutParams(WRAP, WRAP);
+        at.leftMargin = dp(18);
+        at.topMargin = dp(6);
+        head.addView(clock, at);
+        column.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int screenH = getResources().getDisplayMetrics().heightPixels;
+        LinearLayout shelf = new LinearLayout(this);
+        shelf.setGravity(Gravity.BOTTOM);
+        shelf.setClipChildren(false);
+        shelf.setClipToPadding(false);
+        shelf.setPadding(edge, 0, edge, dp(18));
+        int artW = screenW * 36 / 100;
+        shelfArt = new ImageView(this);
+        shelfArt.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        shelfArt.setBackground(Ui.round(Ui.SURFACE, dp(16)));
+        shelfArt.setClipToOutline(true);
+        shelfArt.setElevation(dp(14));
+        shelf.addView(shelfArt, new LinearLayout.LayoutParams(artW, artW * 9 / 16));
+        shelfName = Ui.text(this, 34, Ui.TEXT, Ui.LIGHT);
+        shelfName.setSingleLine();
+        shelfName.setPadding(dp(28), 0, 0, dp(4));
+        shelf.addView(shelfName, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        column.addView(shelf, new LinearLayout.LayoutParams(MATCH, screenH * 50 / 100));
+        shelfBlock = shelf;
+
+        apps = new Row(Catalog.APPS, "Apps", column);
+        inputs = new Row(Catalog.INPUTS, Ui.t(this, "Inputs", "Eingänge"), column);
+    }
+
+    /** Puts {@code it} on the top shelf and fades a blur of its art into the background. */
+    private void feature(Item it) {
+        if (!shelfMode || it == null) return;
+        boolean changed = it != featured;
+        featured = it;
+        shelfName.setText(Catalog.label(cfg, it));
+        Drawable art = it.banner != null ? it.banner : it.icon;
+        boolean banner = it.banner != null;
+        if (art == null) {
+            shelfArt.setImageDrawable(null);
+            shelfArt.setVisibility(View.GONE);
+            if (changed) backdrop(it);
+            return;
+        }
+        GradientDrawable card = it.tintTop == 0 ? null : new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM, new int[] {it.tintTop, it.tintBottom});
+        if (card != null) card.setCornerRadius(dp(16));
+        shelfArt.setBackground(card != null ? card : Ui.round(Ui.SURFACE, dp(16)));
+        // A copy: the tile sets bounds on its own drawable at every draw.
+        Drawable.ConstantState state = art.getConstantState();
+        shelfArt.setImageDrawable(state != null ? state.newDrawable(getResources()).mutate() : art);
+        shelfArt.setScaleType(banner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.CENTER_INSIDE);
+        int pad = banner ? 0 : dp(44);
+        shelfArt.setPadding(pad, pad, pad, pad);
+        shelfArt.setVisibility(View.VISIBLE);
+        if (changed) {
+            shelfArt.setAlpha(0.35f);
+            shelfArt.animate().alpha(1f).setDuration(200).start();
+            backdrop(it);
+        }
+    }
+
+    /**
+     * A very small copy of a banner scaled up in two filtered steps: a soft blur without a library.
+     * The second step keeps the single bilinear stretch from showing as diamonds. A lone icon on a
+     * dark card would blur into a smudge, so anything without a banner gets a plain backdrop.
+     */
+    private void backdrop(Item it) {
+        if (wallKey != null) return;
+        Drawable next;
+        Drawable art = it.banner;
+        if (it.tintTop != 0) {
+            next = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[] {it.tintTop, it.tintBottom});
+        } else if (art == null) {
+            next = new ColorDrawable(0xFF1A1C22);
+        } else {
+            Bitmap detail = Bitmap.createBitmap(48, 27, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(detail);
+            c.drawColor(cfg.background());
+            Drawable.ConstantState state = art.getConstantState();
+            Drawable copy = state != null ? state.newDrawable(getResources()).mutate() : art;
+            Rect keep = copy.copyBounds();
+            copy.setBounds(0, 0, 48, 27);
+            copy.draw(c);
+            copy.setBounds(keep);
+            Bitmap tiny = Bitmap.createScaledBitmap(detail, 12, 7, true);
+            detail.recycle();
+            BitmapDrawable d = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(tiny, 120, 68, true));
+            tiny.recycle();
+            d.setFilterBitmap(true);
+            next = d;
+        }
+        Drawable now = wall.getDrawable();
+        if (now instanceof TransitionDrawable) now = ((TransitionDrawable) now).getDrawable(1);
+        if (now == null) {
+            wall.setImageDrawable(next);
+            return;
+        }
+        TransitionDrawable fade = new TransitionDrawable(new Drawable[] {now, next});
+        fade.setCrossFadeEnabled(true);
+        wall.setImageDrawable(fade);
+        fade.startTransition(320);
+    }
+
+    /** Lets the shelf's art breathe at the top and darkens the part where the tiles sit. */
+    private static Drawable shelfShade() {
+        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] {0x4D000000, 0x66000000, 0xD9000000, 0xF7000000});
+    }
+
+    /** Five tiles fit across the screen, whatever the Tile size says, with room to lift. */
+    private int[] shelfCard() {
+        int gap = dp(18), edge = dp(SHELF_EDGE);
+        int w = (getResources().getDisplayMetrics().widthPixels - 2 * edge - 4 * gap) / 5;
+        return new int[] {w, w * 9 / 16};
     }
 
     /** True when the grid has another line below {@code tile}. */
@@ -628,6 +806,11 @@ public final class Home extends Activity {
     }
 
     private void apply() {
+        // The shelf is built with the screen, so changing to or from it starts the screen over.
+        if (shelfMode != "shelf".equals(cfg.get(Config.LAYOUT))) {
+            recreate();
+            return;
+        }
         applied = cfg.version();
         int accent = cfg.accent();
         for (TextView c : chips) {
@@ -694,7 +877,7 @@ public final class Home extends Activity {
         View focused = getCurrentFocus();
         String keep = focused instanceof Tile && ((Tile) focused).kind.equals(row.kind)
                 ? ((Tile) focused).item.id : null;
-        boolean gridMode = "grid".equals(cfg.get(Config.LAYOUT));
+        boolean gridMode = gridLayout();
         ViewGroup target = gridMode ? row.grid : row.strip;
         row.strip.removeAllViews();
         row.grid.removeAllViews();
@@ -702,13 +885,13 @@ public final class Home extends Activity {
         boolean enabled = !Catalog.INPUTS.equals(row.kind) || "on".equals(cfg.get(Config.INPUTS));
         List<Item> shown = enabled ? Catalog.visible(cfg, row.kind, row.all, recentFor(row.kind))
                 : new ArrayList<>();
-        int[] size = cardSize();
+        int[] size = shelfMode ? shelfCard() : cardSize();
         int w = size[0], h = Catalog.APPS.equals(row.kind) ? size[1] : Math.round(size[1] * 0.56f);
         String labels = cfg.get(Config.LABELS);
         int accent = cfg.accent();
         int index = 0, restore = -1;
         for (Item it : shown) {
-            Tile t = new Tile(this, it, row.kind, Catalog.label(cfg, it), w, h, labels, accent);
+            Tile t = new Tile(this, it, row.kind, Catalog.label(cfg, it), w, h, labels, accent, shelfMode);
             t.setOnClickListener(v -> open((Tile) v));
             t.setOnFocusChangeListener((v, has) -> {
                 if (has) {
@@ -720,6 +903,7 @@ public final class Home extends Activity {
                         lastInputId = tile.item.id;
                     }
                     focusBackground(tile.item);
+                    feature(tile.item);
                 }
             });
             t.setOnLongClickListener(v -> {
@@ -761,7 +945,11 @@ public final class Home extends Activity {
             ui.post(() -> {
                 ViewGroup tiles = apps.tiles();
                 for (int i = 0; i < tiles.getChildCount(); i++) tiles.getChildAt(i).invalidate();
-                if (focusedItem() == it) focusBackground(it);
+                if (focusedItem() == it) {
+                    focusBackground(it);
+                    featured = null;
+                    feature(it);
+                }
             });
         });
     }
@@ -893,6 +1081,23 @@ public final class Home extends Activity {
         boolean image = "image".equals(mode) || "adaptive-tint".equals(mode);
         File file = image ? cfg.wallpaper() : null;
         tintWallpaper = "adaptive-tint".equals(mode) && file != null;
+        if (shelfMode && file == null) {
+            // The backdrop follows the focused tile unless a wallpaper was asked for.
+            stopColorAnimation();
+            targetColor = 0;
+            backgroundMode = mode;
+            tint.setBackgroundColor(Color.TRANSPARENT);
+            root.setBackgroundColor(Color.BLACK);
+            if (!(shade.getBackground() instanceof GradientDrawable)) shade.setBackground(shelfShade());
+            if (wallKey != null) {
+                wallKey = null;
+                wall.setImageDrawable(null);
+                Item again = featured;
+                featured = null;
+                feature(again);
+            }
+            return;
+        }
         if ("adaptive".equals(mode)) {
             if (!mode.equals(backgroundMode)) {
                 stopColorAnimation();
@@ -962,6 +1167,11 @@ public final class Home extends Activity {
     }
 
     private void open(Tile t) {
+        if (t.item.own) {
+            // Same reason as the built-in input screen below: this task is already in front.
+            startActivity(new Intent(t.item.intent));
+            return;
+        }
         if (Catalog.APPS.equals(t.kind)) {
             launch(new Intent(t.item.intent), t.item.id);
             return;
@@ -987,7 +1197,8 @@ public final class Home extends Activity {
 
     private void menu(Tile t) {
         boolean app = Catalog.APPS.equals(t.kind);
-        String[] actions = app
+        // The launcher's own tiles are not apps, so there is no App info to show for them.
+        String[] actions = app && t.item.info != null
                 ? new String[] {"Move", "Rename", "Hide", "App info"}
                 : new String[] {"Move", "Rename", "Hide"};
         new AlertDialog.Builder(this, Ui.DIALOG)
@@ -1067,6 +1278,10 @@ public final class Home extends Activity {
         for (int i = 0; i < strip.getChildCount(); i++) ids.add(((Tile) strip.getChildAt(i)).item.id);
         Catalog.saveOrder(cfg, t.kind, ids);
         applied = cfg.version();
+    }
+
+    private boolean gridLayout() {
+        return shelfMode || "grid".equals(cfg.get(Config.LAYOUT));
     }
 
     private int dp(float v) {

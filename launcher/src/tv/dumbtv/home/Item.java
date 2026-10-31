@@ -16,6 +16,10 @@ final class Item {
     volatile Drawable banner, icon;
     volatile int backgroundColor;
     volatile boolean colorRequested;
+    /** One of the launcher's own screens: started plainly, in the home screen's task. */
+    boolean own;
+    /** For the launcher's own tiles: the card's colors, top to bottom. Zero: an ordinary card. */
+    int tintTop, tintBottom;
 
     Item(String id, CharSequence label, Intent intent) {
         this.id = id;

@@ -1,0 +1,24 @@
+# Analytics and crash reporting inside third-party apps that the general ad lists leave
+# alone at the lighter levels. Added with any ADBLOCK other than amazon. Apps carry on when
+# these do not answer; they only lose the upload. Aerial Views' GitHub build, for one, turns
+# Firebase analytics, crash and performance reporting on (its build.gradle.kts).
+app-measurement.com
+firebaselogging-pa.googleapis.com
+firebaselogging.googleapis.com
+crashlyticsreports-pa.googleapis.com
+firebase-settings.crashlytics.com
+firebaseperusertraces-pa.googleapis.com
+
+# Seen on a Fire TV's own DNS log while the streaming apps opened. Marketing, crash and usage
+# reports; every one of these apps kept working without them.
+browser-intake-datadoghq.com
+braze.com
+bugsnag.com
+bugsnag.appstore.a2z.com
+weblab.a2z.com
+xp.apple.com
+experiments.apple.com
+firebaseinstallations.googleapis.com
+# Amazon's direct metric and event uploads, seen from a Fire TV in Germany.
+monitoring.us-east-1.amazonaws.com
+kinesis.us-east-1.amazonaws.com

@@ -24,6 +24,12 @@ final class Ui {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
     }
 
+    /** {@code german} on a TV set to German, {@code english} everywhere else. */
+    static String t(Context c, String english, String german) {
+        return "de".equals(c.getResources().getConfiguration().getLocales().get(0).getLanguage())
+                ? german : english;
+    }
+
     /** Black on light accents, white on dark ones. */
     static int ink(int color) {
         return Color.luminance(color) > 0.5f ? 0xFF000000 : 0xFFFFFFFF;
